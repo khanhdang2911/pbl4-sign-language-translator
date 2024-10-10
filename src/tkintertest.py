@@ -13,27 +13,21 @@ root.geometry("800x700+290+10")
 image_icon = PhotoImage(file="../assets/images/logo.png")
 root.iconphoto(False, image_icon)
 
-# Frame trang chủ
 def show_home_frame():
     home_frame.tkraise()
 
-# Frame xem video
 def show_video_frame():
     video_frame.tkraise()
 
-# Frame chứa từ vựng
 def show_vocab_frame():
     vocab_frame.tkraise()
 
-# Frame kiểm tra từ vựng
 def show_quiz_frame():
     quiz_frame.tkraise()
 
-# Tạo frame chính để chứa các frame con (trang chủ, xem video, từ vựng và kiểm tra)
 main_frame = tk.Frame(root)
 main_frame.pack(fill="both", expand=True)
 
-# Frame Trang chủ với Nút 1, Nút 2 và Nút Kiểm tra
 home_frame = tk.Frame(main_frame)
 home_frame.place(relwidth=1, relheight=1)
 
@@ -43,10 +37,9 @@ btn1.pack(pady=20)
 btn2 = tk.Button(home_frame, text="Học NNKH", font=("calibri", 14), command=show_vocab_frame)
 btn2.pack(pady=20)
 
-btn_quiz = tk.Button(home_frame, text="Kiểm tra từ vựng", font=("calibri", 14), command=show_video_frame)
+btn_quiz = tk.Button(home_frame, text="Kiểm tra từ vựng", font=("calibri", 14), command=show_quiz_frame)
 btn_quiz.pack(pady=20)
 
-# Frame xem video với các chức năng như ghi hình, upload video
 video_frame = tk.Frame(main_frame)
 video_frame.place(relwidth=1, relheight=1)
 
@@ -113,7 +106,31 @@ def upload_video():
             text_box.delete("1.0", "end")
             text_box.insert("1.0", "Failed to upload video")
 
-# Nút trong video_frame
+# call api
+def get_video_by_prompt(prompt):
+    url = f'http://localhost:8081/learn-signature/get-video-by-prompt?prompt={prompt}'
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        if data["success"]:
+            print(video_data)
+            video_data = data["videos"][0]
+            cloudinary_url = video_data.get("video_url")
+
+            text_box.delete("1.0", "end")
+            text_box.insert("1.0", f"Video found: {video_data['prompt']}")
+
+            # load video
+            vid_player.load(cloudinary_url)
+            vid_player.play()
+        else:
+            text_box.delete("1.0", "end")
+            text_box.insert("1.0", "No video found for the given prompt")
+    else:
+        text_box.delete("1.0", "end")
+        text_box.insert("1.0", f"Failed to fetch video. Error: {response.status_code}")
+
 record_btn = tk.Button(top_frame, text="Record Video", bg="#FFFFFF", font=("calibri", 12, "bold"), command=record_video)
 record_btn.pack(side=tk.LEFT, padx=5)
 
@@ -123,15 +140,15 @@ stop_btn.pack(side=tk.LEFT, padx=5)
 upload_btn = tk.Button(top_frame, text="Upload Video", bg="#FFFFFF", font=("calibri", 12, "bold"), command=upload_video)
 upload_btn.pack(side=tk.LEFT, padx=5)
 
-# Thêm nút "Trở về trang chủ" dưới cùng trong video_frame
+search_btn_video = tk.Button(top_frame, text="Search Video by Prompt", bg="#FFFFFF", font=("calibri", 12, "bold"), command=lambda: get_video_by_prompt("book"))
+search_btn_video.pack(side=tk.LEFT, padx=5)
+
 back_to_home_btn = tk.Button(video_frame, text="Trở về trang chủ", bg="#FFFFFF", font=("calibri", 12, "bold"), command=show_home_frame)
 back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
 
-# Frame hiển thị từ vựng và video hướng dẫn
 vocab_frame = tk.Frame(main_frame)
 vocab_frame.place(relwidth=1, relheight=1)
 
-# Thêm ô tìm kiếm từ vựng ở trên cùng
 search_frame = tk.Frame(vocab_frame, bg="#f0f0f0")
 search_frame.pack(side=tk.TOP, fill="x")
 
@@ -142,7 +159,6 @@ search_var = tk.StringVar()
 search_entry = tk.Entry(search_frame, textvariable=search_var, font=("calibri", 12))
 search_entry.pack(side=tk.LEFT, padx=10, fill="x", expand=True)
 
-# Hàm tìm từ và hiển thị kết quả
 def search_word():
     word_to_find = search_var.get().lower()
     for button in word_buttons:
@@ -154,35 +170,28 @@ def search_word():
 search_btn = tk.Button(search_frame, text="Tìm kiếm", font=("calibri", 12), command=search_word)
 search_btn.pack(side=tk.LEFT, padx=10)
 
-# Frame con (sub_frame) nằm trong vocab_frame
 sub_frame = tk.Frame(vocab_frame, bg="#f0f0f0", width=150)
 sub_frame.pack(side=tk.LEFT, fill="y")
 
-# Từ vựng thường dùng
 words = ["hello", "goodbye", "thanks", "sorry"]
 word_buttons = []
 
-# Hàm hiển thị video tương ứng với từ
 def play_vocab_video(word):
     video_path = f"../assets/videos/{word}.mp4"
     vid_player_vocab.load(video_path)
     vid_player_vocab.play()
 
-# Tạo các nút từ vựng bên trong sub_frame
 for word in words:
     btn = tk.Button(sub_frame, text=word, font=("calibri", 12), command=lambda w=word: play_vocab_video(w))
     btn.pack(pady=5, anchor='w')
     word_buttons.append(btn)
 
-# Video player trong vocab_frame
 vid_player_vocab = TkinterVideo(vocab_frame, scaled=True)
 vid_player_vocab.pack(expand=True, fill="both")
 
-# Thêm nút "Trở về trang chủ" dưới cùng trong vocab_frame
 back_to_home_btn_vocab = tk.Button(vocab_frame, text="Trở về trang chủ", bg="#FFFFFF", font=("calibri", 12), command=show_home_frame)
 back_to_home_btn_vocab.pack(side=tk.BOTTOM, pady=10)
 
-# Frame kiểm tra từ vựng (giống với frame xem video)
 quiz_frame = tk.Frame(main_frame)
 quiz_frame.place(relwidth=1, relheight=1)
 
@@ -192,11 +201,9 @@ quiz_label.pack(pady=20)
 vid_player_quiz = TkinterVideo(quiz_frame, scaled=True)
 vid_player_quiz.pack(expand=True, fill="both")
 
-# Nút "Trở về trang chủ" trong frame kiểm tra
 back_to_home_btn_quiz = tk.Button(quiz_frame, text="Trở về trang chủ", bg="#FFFFFF", font=("calibri", 12), command=show_home_frame)
 back_to_home_btn_quiz.pack(side=tk.BOTTOM, pady=10)
 
-# Hiển thị frame trang chủ đầu tiên
 show_home_frame()
 
 root.mainloop()
