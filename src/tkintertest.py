@@ -36,17 +36,48 @@ main_frame.pack(fill="both", expand=True)
 home_frame = tk.Frame(main_frame, bg="#FFFFFF")
 home_frame.place(relwidth=1, relheight=1)
 
-title_label = tk.Label(home_frame, text="Sign Language Translation & Learning", font=("Arial", 24, "bold"), bg="#ffffff", fg="#333")
+# Header Section
+header_frame = tk.Frame(home_frame, bg="#4CAF50")
+header_frame.pack(fill="x")
+
+# Add App Image in Header
+app_image = Image.open("../assets/images/logo.png")  # Load your app logo
+app_image = app_image.resize((100, 100), Image.LANCZOS)  # Resize the image if necessary
+app_logo = ImageTk.PhotoImage(app_image)
+
+logo_label = tk.Label(header_frame, image=app_logo, bg="#4CAF50")
+logo_label.pack(side=tk.LEFT, padx=10)
+
+title_label = tk.Label(header_frame, text="Sign Language Translation & Learning", font=("Arial", 24, "bold"), bg="#4CAF50", fg="#fff")
 title_label.pack(pady=20)
+# Button Section
+button_frame = tk.Frame(home_frame, bg="#FFFFFF")
+button_frame.pack(pady=30)
 
-btn1 = tk.Button(home_frame, text="Translate Sign Language", font=("Arial", 16, "bold"), bg="#4CAF50", fg="#fff", command=show_video_frame)
-btn1.pack(pady=20)
+# Create Buttons with Icons (Optional)
+btn1 = tk.Button(button_frame, text="Translate Sign Language", font=("Arial", 16, "bold"), bg="#4CAF50", fg="#fff", command=show_video_frame)
+btn1.pack(pady=10, padx=20, fill="x")
 
-btn2 = tk.Button(home_frame, text="Learn Sign Language", font=("Arial", 16, "bold"), bg="#2196F3", fg="#fff", command=show_vocab_frame)
-btn2.pack(pady=20)
+btn2 = tk.Button(button_frame, text="Learn Sign Language", font=("Arial", 16, "bold"), bg="#2196F3", fg="#fff", command=show_vocab_frame)
+btn2.pack(pady=10, padx=20, fill="x")
 
-btn_quiz = tk.Button(home_frame, text="Vocabulary Quiz", font=("Arial", 16, "bold"), bg="#FF5722", fg="#fff", command=show_quiz_frame)
-btn_quiz.pack(pady=20)
+btn_quiz = tk.Button(button_frame, text="Vocabulary Quiz", font=("Arial", 16, "bold"), bg="#FF5722", fg="#fff", command=show_quiz_frame)
+btn_quiz.pack(pady=10, padx=20, fill="x")
+
+# Footer Section (optional)
+footer_frame = tk.Frame(home_frame, bg="#f5f5f5")
+footer_frame.pack(side="bottom", fill="x")
+
+footer_label = tk.Label(footer_frame, text="© 2024 Sign Language Learning App. All Rights Reserved.", font=("Arial", 10), bg="#f5f5f5", fg="#333")
+footer_label.pack(pady=10)
+
+# Keep a reference to the image to avoid garbage collection
+logo_label.image = app_logo
+
+
+# Add some padding around the main frame
+home_frame.pack_propagate(False)  # Prevent frame from resizing to fit contents
+
 
 # Video Frame
 video_frame = tk.Frame(main_frame, bg="#f5f5f5")
@@ -113,9 +144,12 @@ def update_word_list(category):
     elif category == "nouns":
         words_to_display = ["book", "water", "phone", "house", "school", "money", "car", "bed", "table", "chair", "friend", "family"]
 
-    # Hiển thị danh sách từ mới
+    # Set a fixed width for the buttons
+    button_width = 12  # You can adjust this width as needed
+
     for word in words_to_display:
-        btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", command=lambda w=word: play_vocab_video(w))
+        btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", 
+                        command=lambda w=word: play_vocab_video(w), width=button_width)
         btn.pack(pady=5, anchor='w')
         word_buttons.append(btn)
 
@@ -188,9 +222,10 @@ def play_vocab_video(word):
         # Nếu không tìm thấy tệp video, hiển thị thông báo lỗi
         text_box.delete("1.0", "end")
         text_box.insert("1.0", f"Video for '{word}' not found.")
-
+button_width = 12
 for word in words:
-    btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", command=lambda w=word: play_vocab_video(w))
+    btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", 
+                        command=lambda w=word: play_vocab_video(w), width=button_width)
     btn.pack(pady=5, anchor='w')
     word_buttons.append(btn)
 
