@@ -28,6 +28,35 @@ def show_vocab_frame():
 
 def show_quiz_frame():
     quiz_frame.tkraise()
+    
+    # Chọn từ đúng
+    global random_word
+    random_word = random.choice(words)
+    
+    # Tạo danh sách các từ sai (không bao gồm từ đúng)
+    wrong_words = [word for word in words if word != random_word]
+    # Chọn ngẫu nhiên 3 từ sai
+    incorrect_words = random.sample(wrong_words, 3)
+    
+    # Tạo list chứa cả 4 từ (1 đúng + 3 sai)
+    all_options = [random_word] + incorrect_words
+    # Xáo trộn vị trí các từ
+    random.shuffle(all_options)
+    
+    # Cập nhật text và value cho 4 radio buttons
+    quiz_option_1.config(text=all_options[0], value=all_options[0])
+    quiz_option_2.config(text=all_options[1], value=all_options[1])
+    quiz_option_3.config(text=all_options[2], value=all_options[2])
+    quiz_option_4.config(text=all_options[3], value=all_options[3])
+    
+    # Reset instruction text và radio button selection
+    quiz_instruction_label.config(text="Select the correct word for the video shown:")
+    quiz_option_var.set(None)
+    
+    # Load và play video
+    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    quiz_vid_player.play()
+
 
 # Main frame
 main_frame = tk.Frame(root, bg="#f5f5f5")
@@ -254,13 +283,32 @@ random_word_incorrect = "hello"
 
 def quiz_random_word():
     global random_word
-    global random_word_incorrect
-    random_word = random.choice(words)  # Chọn từ ngẫu nhiên
-    random_word_incorrect= random.choice(words)
+    
+    # Chọn từ đúng
+    random_word = random.choice(words)
+    
+    # Tạo danh sách các từ sai (không bao gồm từ đúng)
+    wrong_words = [word for word in words if word != random_word]
+    # Chọn ngẫu nhiên 3 từ sai
+    incorrect_words = random.sample(wrong_words, 3)
+    
+    # Tạo list chứa cả 4 từ (1 đúng + 3 sai)
+    all_options = [random_word] + incorrect_words
+    # Xáo trộn vị trí các từ
+    random.shuffle(all_options)
+    
+    # Cập nhật text và value cho 4 radio buttons
+    quiz_option_1.config(text=all_options[0], value=all_options[0])
+    quiz_option_2.config(text=all_options[1], value=all_options[1])
+    quiz_option_3.config(text=all_options[2], value=all_options[2])
+    quiz_option_4.config(text=all_options[3], value=all_options[3])
+    
+    # Reset các trạng thái
+    quiz_option_var.set(None)
+    quiz_instruction_label.config(text="Select the correct word for the video shown:", fg="#333", font=("Arial", 16))
+    
+    # Bắt đầu quiz với từ đã chọn
     start_quiz(random_word)
-    quiz_option_1.config(text=random_word, value=random_word)
-    quiz_option_2.config(text=random_word_incorrect, value=random_word_incorrect)
-    quiz_option_var.set("")
 
 def start_quiz(random_word):
     quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
@@ -274,15 +322,21 @@ quiz_option_var = tk.StringVar()
 def check_answer():
     selected_word = quiz_option_var.get()
     if selected_word == random_word:
-        quiz_instruction_label.config(text="Correct!")
+        quiz_instruction_label.config(text="Correct!", fg="#4CAF50", font=("Arial", 16, "bold"))
     else:
-        quiz_instruction_label.config(text="Try again.")
+        quiz_instruction_label.config(text="Wrong answer. Try again!", fg="#FF0000", font=("Arial", 16, "bold"))
 
 quiz_option_1 = tk.Radiobutton(quiz_frame, text="goodbye", variable=quiz_option_var, value="goodbye", font=("Arial", 14), bg="#f5f5f5", fg="#333")
 quiz_option_1.pack(anchor='w', padx=20)
 
 quiz_option_2 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
 quiz_option_2.pack(anchor='w', padx=20)
+# Thêm 2 radio buttons mới vào phần giao diện (đặt ngay sau quiz_option_2):
+quiz_option_3 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_3.pack(anchor='w', padx=20)
+
+quiz_option_4 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_4.pack(anchor='w', padx=20)
 
 quiz_submit_btn = tk.Button(quiz_frame, text="Submit Answer", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=check_answer)
 quiz_submit_btn.pack(pady=20)
