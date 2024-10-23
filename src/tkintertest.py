@@ -5,6 +5,7 @@ from PIL import Image, ImageTk
 from tkVideoPlayer import TkinterVideo
 from tkinter import filedialog
 import os  # Thêm thư viện os để kiểm tra tệp tin
+import random #random quiz
 
 # Create the main window
 root = tk.Tk()
@@ -248,18 +249,31 @@ quiz_instruction_label.pack(pady=10)
 quiz_vid_player = TkinterVideo(quiz_frame, scaled=True)
 quiz_vid_player.pack(expand=True, fill="both", padx=10, pady=10)
 
-def start_quiz():
-    quiz_vid_player.load("../assets/videos/goodbye.mp4")
+random_word = "goodbye"
+random_word_incorrect = "hello"
+
+def quiz_random_word():
+    global random_word
+    global random_word_incorrect
+    random_word = random.choice(words)  # Chọn từ ngẫu nhiên
+    random_word_incorrect= random.choice(words)
+    start_quiz(random_word)
+    quiz_option_1.config(text=random_word, value=random_word)
+    quiz_option_2.config(text=random_word_incorrect, value=random_word_incorrect)
+    quiz_option_var.set("")
+
+def start_quiz(random_word):
+    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
     quiz_vid_player.play()
 
-start_quiz_btn = tk.Button(quiz_frame, text="Start Quiz", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=start_quiz)
+# Sử dụng lambda để không gọi hàm ngay lập tức
+start_quiz_btn = tk.Button(quiz_frame, text="Start Quiz", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=lambda: start_quiz(random_word))
 start_quiz_btn.pack(pady=10)
-
 quiz_option_var = tk.StringVar()
 
 def check_answer():
     selected_word = quiz_option_var.get()
-    if selected_word == "goodbye":
+    if selected_word == random_word:
         quiz_instruction_label.config(text="Correct!")
     else:
         quiz_instruction_label.config(text="Try again.")
@@ -272,6 +286,9 @@ quiz_option_2.pack(anchor='w', padx=20)
 
 quiz_submit_btn = tk.Button(quiz_frame, text="Submit Answer", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=check_answer)
 quiz_submit_btn.pack(pady=20)
+
+quiz_random_btn = tk.Button(quiz_frame, text="Random Quiz", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=quiz_random_word)
+quiz_random_btn.pack(pady=20)
 
 back_to_home_btn = tk.Button(quiz_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
 back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
