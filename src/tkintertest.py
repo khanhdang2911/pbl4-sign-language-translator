@@ -4,8 +4,13 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from tkVideoPlayer import TkinterVideo
 from tkinter import filedialog
-import os  # Thêm thư viện os để kiểm tra tệp tin
+import os  # them thu vien os de check file ton tai
 import random #random quiz
+from model import HandGesturePredictor
+
+# Khởi tạo predictor
+model_filename = 'LargerDataset.joblib'
+predictor = HandGesturePredictor(model_filename)
 
 # Create the main window
 root = tk.Tk()
@@ -122,7 +127,7 @@ lower_frame.pack(fill="both", side=BOTTOM)
 vid_player = TkinterVideo(video_frame, scaled=True)
 vid_player.pack(expand=True, fill="both", padx=10, pady=10)
 
-text_box = tk.Text(video_frame, height=5, width=80, font=("Arial", 12), fg="#333")
+text_box = tk.Text(video_frame, height=5, width=80, font=("Arial", 16,"bold"), fg="#333", bg="#f5f5f5")
 text_box.pack(pady=10, fill="x")
 text_box.insert("1.0", "This is a text box to display text below the video.")
 
@@ -134,23 +139,32 @@ recording = False
 
 # Function to update video frames
 def update_video_frame():
-    global recording, cap
+    global recording, cap, predictor, text_box
     if recording:
         ret, frame = cap.read()
         if ret:
+            # Chuyển đổi frame sang định dạng phù hợp với Tkinter
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame)
             imgtk = ImageTk.PhotoImage(image=img)
 
+            # Cập nhật khung hiển thị video
             video_label.imgtk = imgtk
             video_label.configure(image=imgtk)
 
-        video_label.after(10, update_video_frame)
+            # Gửi frame vào hàm predict() và cập nhật kết quả vào text_box
+            prediction = predictor.predict(frame)
+            text_box.delete("1.0", "end")
+            text_box.insert("1.0", f": {prediction[0]}")
+
+        # Gọi lại hàm update_video_frame() sau 100ms
+        video_label.after(100, update_video_frame)
+    
 
 # Function to start recording video
 def record_video():
     global cap, recording
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     recording = True
     update_video_frame()
 
