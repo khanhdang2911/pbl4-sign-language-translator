@@ -1,7 +1,9 @@
+import time
 import cv2
 from tkinter import *
 import tkinter as tk
 from PIL import Image, ImageTk
+import numpy as np
 from tkVideoPlayer import TkinterVideo
 from tkinter import filedialog
 import os  # them thu vien os de check file ton tai
@@ -11,6 +13,15 @@ from model import HandGesturePredictor
 # Khởi tạo predictor
 model_filename = 'LargerDataset.joblib'
 predictor = HandGesturePredictor(model_filename)
+
+predictions_array = []  # Mảng lưu các dự đoán
+last_update_time = time.time()  # Thời điểm cập nhật cuối
+last_hand_positions = None  # Vị trí tay ở frame trước
+PREDICTION_THRESHOLD = 0.6  # Ngưỡng tin cậy (60%)
+MOVEMENT_THRESHOLD = 0.1  # Ngưỡng thay đổi vị trí tay (10%)
+last_prediction_time = time.time()  # Thời điểm dự đoán cuối
+
+
 
 # Create the main window
 root = tk.Tk()
@@ -134,49 +145,203 @@ text_box.insert("1.0", "This is a text box to display text below the video.")
 video_label = tk.Label(vid_player)
 video_label.pack()
 
+
+def calculate_hand_movement(current_results, last_positions):
+    if last_positions is None:
+        return 1.0  # Trả về giá trị lớn để chắc chắn xử lý frame đầu tiên
+    
+    # Lấy landmarks của tay hiện tại
+    current_positions = []
+    if current_results.left_hand_landmarks:
+        for landmark in current_results.left_hand_landmarks.landmark:
+            current_positions.extend([landmark.x, landmark.y, landmark.z])
+    if current_results.right_hand_landmarks:
+        for landmark in current_results.right_hand_landmarks.landmark:
+            current_positions.extend([landmark.x, landmark.y, landmark.z])
+            
+    if not current_positions:
+        return 1.0  # Không phát hiện tay trong frame hiện tại
+        
+    current_positions = np.array(current_positions)
+    
+    # Tính toán sự thay đổi vị trí trung bình
+    movement = np.mean(np.abs(current_positions - last_positions))
+    return movement
 # Video recording control variable
 recording = False
 
-# Function to update video frames
+def calculate_hand_movement(current_results, last_positions):
+    if last_positions is None:
+        return 1.0  # Trả về giá trị lớn để chắc chắn xử lý frame đầu tiên
+    
+    # Lấy landmarks của tay hiện tại
+    current_positions = []
+    hand_count = 0
+    
+    if current_results.left_hand_landmarks:
+        for landmark in current_results.left_hand_landmarks.landmark:
+            current_positions.extend([landmark.x, landmark.y, landmark.z])
+        hand_count += 1
+            
+    if current_results.right_hand_landmarks:
+        for landmark in current_results.right_hand_landmarks.landmark:
+            current_positions.extend([landmark.x, landmark.y, landmark.z])
+        hand_count += 1
+            
+    if not current_positions:
+        return 1.0  # Không phát hiện tay trong frame hiện tại
+        
+    current_positions = np.array(current_positions)
+    
+    # Nếu số lượng tay phát hiện được khác với frame trước
+    if len(current_positions) != len(last_positions):
+        return 1.0
+    
+    # Tính toán sự thay đổi vị trí trung bình
+    try:
+        movement = np.mean(np.abs(current_positions - last_positions))
+        return movement
+    except:
+        return 1.0
+
 def update_video_frame():
-    global recording, cap, predictor, text_box
+    global recording, cap, predictor, text_box, predictions_array, resultPredict, last_update_time, last_hand_positions, last_prediction_time, last_hand_count
+    
     if recording:
         ret, frame = cap.read()
         if ret:
-            # Chuyển đổi frame sang định dạng phù hợp với Tkinter
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(frame)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(frame_rgb)
             imgtk = ImageTk.PhotoImage(image=img)
-
-            # Cập nhật khung hiển thị video
             video_label.imgtk = imgtk
             video_label.configure(image=imgtk)
 
-            # Gửi frame vào hàm predict() và cập nhật kết quả vào text_box
-            prediction = predictor.predict(frame)
-            text_box.delete("1.0", "end")
-            text_box.insert("1.0", f": {prediction[0]}")
+            current_time = time.time()
+            
+            if current_time - last_prediction_time >= 0.1:
+                results = predictor.mediapipe_detection(frame)
+                
+                # Lấy vị trí tay hiện tại
+                current_positions = []
+                current_hand_count = 0
+                
+                if results.left_hand_landmarks:
+                    for landmark in results.left_hand_landmarks.landmark:
+                        current_positions.extend([landmark.x, landmark.y, landmark.z])
+                    current_hand_count += 1
+                    
+                if results.right_hand_landmarks:
+                    for landmark in results.right_hand_landmarks.landmark:
+                        current_positions.extend([landmark.x, landmark.y, landmark.z])
+                    current_hand_count += 1
+                
+                if current_positions:
+                    current_positions = np.array(current_positions)
+                    
+                    # Chỉ so sánh nếu số lượng tay phát hiện được giống nhau
+                    if last_hand_positions is not None and current_hand_count == last_hand_count:
+                        try:
+                            movement = calculate_hand_movement(results, last_hand_positions)
+                            
+                            if movement < MOVEMENT_THRESHOLD:
+                                prediction = predictor.predict(frame)
+                                predictions_array.append(prediction[0])
+                        except ValueError:
+                            pass  # Bỏ qua nếu có lỗi về kích thước mảng
+                    
+                    # Cập nhật vị trí tay và số lượng tay cuối
+                    last_hand_positions = current_positions
+                    last_hand_count = current_hand_count
+                
+                last_prediction_time = current_time
+            
+            if current_time - last_update_time >= 1.0:
+                if predictions_array:
+                    word_counts = {}
+                    for word in predictions_array:
+                        word_counts[word] = word_counts.get(word, 0) + 1
+                    
+                    total_predictions = len(predictions_array)
+                    most_common_word = None
+                    highest_confidence = 0
+                    
+                    for word, count in word_counts.items():
+                        confidence = count / total_predictions
+                        if confidence > PREDICTION_THRESHOLD and confidence > highest_confidence:
+                            most_common_word = word
+                            highest_confidence = confidence
+                    
+                    if most_common_word:
+                        # Thêm từ có độ chính xác cao vào resultPredict
+                        resultPredict.append({
+                            'word': most_common_word,
+                            'confidence': highest_confidence
+                        })
+                        
+                        text_box.delete("1.0", "end")
+                        text_box.insert("1.0", 
+                            f"Predicted Word: {most_common_word}\n"
+                            f"Confidence: {highest_confidence*100:.2f}%\n"
+                            f"Total predictions in window: {total_predictions}")
+                
+                predictions_array = []
+                last_update_time = current_time
+            
+        video_label.after(10, update_video_frame)
 
-        # Gọi lại hàm update_video_frame() sau 100ms
-        video_label.after(100, update_video_frame)
-    
-
-# Function to start recording video
 def record_video():
-    global cap, recording
+    global cap, recording, predictor, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
     cap = cv2.VideoCapture(0)
     recording = True
+    
+    predictions_array = []
+    resultPredict = []  # Reset mảng resultPredict khi bắt đầu record mới
+    last_update_time = time.time()
+    last_hand_positions = None
+    last_hand_count = 0
+    last_prediction_time = time.time()
+    
+    model_filename = 'LargerDataset.joblib'
+    predictor = HandGesturePredictor(model_filename)
+    
     update_video_frame()
 
-# Function to stop recording video
 def stop_recording():
-    global recording, cap
+    global recording, cap, last_hand_positions, last_hand_count
     recording = False
-    cap.release()
-    text_box.delete("1.0", "end")
-    text_box.insert("1.0", "Recording stopped.")
+    last_hand_positions = None
+    last_hand_count = 0
+    if cap is not None:
+        cap.release()
+    
+    if resultPredict:
+        filtered_results = []
+        last_word = None
+        
+        # Lọc các kết quả, chỉ giữ lại khi có sự thay đổi từ
+        for result in resultPredict:
+            current_word = result['word']
+            # Thêm vào kết quả nếu là từ đầu tiên hoặc khác với từ cuối cùng
+            if last_word is None or current_word != last_word:
+                filtered_results.append(result)
+                last_word = current_word
+        
+        # Hiển thị kết quả đã lọc
+        if filtered_results:
+            text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
+            for result in filtered_results:
+                text_output += f"Word: {result['word']}\n"
+            text_box.delete("1.0", "end")
+            text_box.insert("1.0", text_output)
+        else:
+            text_box.delete("1.0", "end")
+            text_box.insert("1.0", "Recording stopped. No predictions were made.")
+    else:
+        text_box.delete("1.0", "end")
+        text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
+
+
 def update_word_list(category):
-    # Xóa hết các nút từ hiện tại trước khi hiển thị danh sách mới
     for button in word_buttons:
         button.pack_forget()
 

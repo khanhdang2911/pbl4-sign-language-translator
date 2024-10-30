@@ -40,3 +40,4 @@ if __name__ == "__main__":
     prediction = predictor.predict(image)
     print(prediction)
     
+#Cứ 100ms sẽ gửi lên 1 tấm ảnh, nhưng tôi muốn gửi ảnh khi không có sự thay đổi lớn về tay(tức là sự thay đổi của từ trong 1s thì sẽ gửi lên, chẳng hạn trên 60% thì sẽ lấy từ đó, nên cho vào 1 mảng để so sánh), có cách nào không?
