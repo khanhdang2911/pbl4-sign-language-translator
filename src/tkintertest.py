@@ -4,6 +4,7 @@ from tkinter import *
 import tkinter as tk
 from PIL import Image, ImageTk
 import numpy as np
+import requests
 from tkVideoPlayer import TkinterVideo
 from tkinter import filedialog
 import os  # them thu vien os de check file ton tai
@@ -317,28 +318,58 @@ def stop_recording():
     if resultPredict:
         filtered_results = []
         last_word = None
+        predicted_words = []  # Mảng chứa các từ để gửi lên API
         
         # Lọc các kết quả, chỉ giữ lại khi có sự thay đổi từ
         for result in resultPredict:
             current_word = result['word']
-            # Thêm vào kết quả nếu là từ đầu tiên hoặc khác với từ cuối cùng
             if last_word is None or current_word != last_word:
                 filtered_results.append(result)
+                predicted_words.append(current_word)  # Thêm từ vào mảng để gửi lên API
                 last_word = current_word
         
-        # Hiển thị kết quả đã lọc
-        if filtered_results:
+        # Gọi API để sửa ngữ nghĩa
+        try:
+            # Chuẩn bị data để gửi lên API
+            api_data = {
+                "text_voice": predicted_words
+            }
+            
+            # Gọi API
+            response = requests.post('http://localhost:8081/home/create-text-voice', json=api_data)
+            
+            if response.status_code == 200:
+                # Parse JSON response
+                api_response = response.json()
+                
+                if api_response.get('success'):
+                    # Hiển thị cả kết quả dự đoán và câu đã sửa
+                    text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
+                    for result in filtered_results:
+                        text_output += f"Word: {result['word']}, Confidence: {result['confidence']*100:.2f}%\n"
+                    
+                    text_output += f"\nCorrected sentence:\n{api_response['message']}"
+                    
+                    text_box.delete("1.0", "end")
+                    text_box.insert("1.0", text_output)
+                else:
+                    text_box.delete("1.0", "end")
+                    text_box.insert("1.0", "Error in sentence correction.")
+                    
+        except requests.exceptions.RequestException as e:
+            # Xử lý lỗi khi gọi API
             text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
             for result in filtered_results:
-                text_output += f"Word: {result['word']}\n"
+                text_output += f"Word: {result['word']}, Confidence: {result['confidence']*100:.2f}%\n"
+            
+            text_output += f"\nError connecting to correction service: {str(e)}"
             text_box.delete("1.0", "end")
             text_box.insert("1.0", text_output)
-        else:
-            text_box.delete("1.0", "end")
-            text_box.insert("1.0", "Recording stopped. No predictions were made.")
+            
     else:
         text_box.delete("1.0", "end")
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
+
 
 
 def update_word_list(category):
