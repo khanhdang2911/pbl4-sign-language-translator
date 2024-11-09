@@ -1,4 +1,5 @@
 import time
+from tkinter import ttk
 import cv2
 from tkinter import *
 import tkinter as tk
@@ -10,11 +11,13 @@ from tkinter import filedialog
 import os  # them thu vien os de check file ton tai
 import random #random quiz
 from model import HandGesturePredictor
+from learning_model import HandGestureCorrection
+# Thêm imports cần thiết ở đầu file
 
 # Khởi tạo predictor
 model_filename = 'LargerDataset.joblib'
 predictor = HandGesturePredictor(model_filename)
-
+correction = HandGestureCorrection()
 predictions_array = []  # Mảng lưu các dự đoán
 last_update_time = time.time()  # Thời điểm cập nhật cuối
 last_hand_positions = None  # Vị trí tay ở frame trước
@@ -206,90 +209,75 @@ def calculate_hand_movement(current_results, last_positions):
         return 1.0
 
 def update_video_frame():
-    global recording, cap, predictor, text_box, predictions_array, resultPredict, last_update_time, last_hand_positions, last_prediction_time, last_hand_count
+    global recording, cap, predictor, text_box, resultPredict
+    
+    # Khởi tạo mảng dự đoán cho mỗi giây
+    if not hasattr(update_video_frame, 'predictions'):
+        update_video_frame.predictions = []
+        update_video_frame.last_time = time.time()
     
     if recording:
         ret, frame = cap.read()
         if ret:
+            # Hiển thị frame
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame_rgb)
             imgtk = ImageTk.PhotoImage(image=img)
             video_label.imgtk = imgtk
             video_label.configure(image=imgtk)
-
+            
             current_time = time.time()
             
-            if current_time - last_prediction_time >= 0.1:
-                results = predictor.mediapipe_detection(frame)
-                
-                # Lấy vị trí tay hiện tại
-                current_positions = []
-                current_hand_count = 0
-                
-                if results.left_hand_landmarks:
-                    for landmark in results.left_hand_landmarks.landmark:
-                        current_positions.extend([landmark.x, landmark.y, landmark.z])
-                    current_hand_count += 1
-                    
-                if results.right_hand_landmarks:
-                    for landmark in results.right_hand_landmarks.landmark:
-                        current_positions.extend([landmark.x, landmark.y, landmark.z])
-                    current_hand_count += 1
-                
-                if current_positions:
-                    current_positions = np.array(current_positions)
-                    
-                    # Chỉ so sánh nếu số lượng tay phát hiện được giống nhau
-                    if last_hand_positions is not None and current_hand_count == last_hand_count:
-                        try:
-                            movement = calculate_hand_movement(results, last_hand_positions)
-                            
-                            if movement < MOVEMENT_THRESHOLD:
-                                prediction = predictor.predict(frame)
-                                predictions_array.append(prediction[0])
-                        except ValueError:
-                            pass  # Bỏ qua nếu có lỗi về kích thước mảng
-                    
-                    # Cập nhật vị trí tay và số lượng tay cuối
-                    last_hand_positions = current_positions
-                    last_hand_count = current_hand_count
-                
-                last_prediction_time = current_time
+            # Thực hiện dự đoán mỗi 100ms
+            try:
+                prediction = predictor.predict(frame)[0]  # Lấy kết quả dự đoán
+                update_video_frame.predictions.append(prediction)
+            except Exception as e:
+                print(f"Prediction error: {e}")
             
-            if current_time - last_update_time >= 1.0:
-                if predictions_array:
+            # Mỗi 1 giây, phân tích kết quả
+            if current_time - update_video_frame.last_time >= 1.0:
+                if update_video_frame.predictions:
+                    # Đếm số lần xuất hiện của mỗi từ
                     word_counts = {}
-                    for word in predictions_array:
+                    total_predictions = len(update_video_frame.predictions)
+                    
+                    for word in update_video_frame.predictions:
                         word_counts[word] = word_counts.get(word, 0) + 1
                     
-                    total_predictions = len(predictions_array)
-                    most_common_word = None
-                    highest_confidence = 0
+                    # Tìm từ có tỷ lệ xuất hiện cao nhất
+                    max_word = None
+                    max_confidence = 0
                     
                     for word, count in word_counts.items():
                         confidence = count / total_predictions
-                        if confidence > PREDICTION_THRESHOLD and confidence > highest_confidence:
-                            most_common_word = word
-                            highest_confidence = confidence
+                        if confidence > max_confidence:
+                            max_confidence = confidence
+                            max_word = word
                     
-                    if most_common_word:
-                        # Thêm từ có độ chính xác cao vào resultPredict
+                    # Nếu từ xuất hiện trên 60% trong 1s, lưu kết quả và hiển thị
+                    if max_confidence >= 0.6:
+                        # Lưu kết quả vào resultPredict
                         resultPredict.append({
-                            'word': most_common_word,
-                            'confidence': highest_confidence
+                            'word': max_word,
+                            'confidence': max_confidence
                         })
                         
+                        # Hiển thị kết quả hiện tại
+                        result_text = (
+                            f"Predicted Word: {max_word}\n"
+                            f"Confidence: {max_confidence*100:.2f}%\n"
+                            f"Total predictions: {total_predictions}"
+                        )
                         text_box.delete("1.0", "end")
-                        text_box.insert("1.0", 
-                            f"Predicted Word: {most_common_word}\n"
-                            f"Confidence: {highest_confidence*100:.2f}%\n"
-                            f"Total predictions in window: {total_predictions}")
+                        text_box.insert("1.0", result_text)
                 
-                predictions_array = []
-                last_update_time = current_time
+                # Reset cho chu kỳ mới
+                update_video_frame.predictions = []
+                update_video_frame.last_time = current_time
             
-        video_label.after(10, update_video_frame)
-
+            video_label.after(100, update_video_frame)  # Cập nhật mỗi 100ms
+            
 def record_video():
     global cap, recording, predictor, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
     cap = cv2.VideoCapture(0)
@@ -371,27 +359,198 @@ def stop_recording():
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
 
 
+class PracticeWindow:
+    def __init__(self, word):
+        self.word = word
+        self.root = tk.Toplevel()
+        self.root.title(f"Practice '{word.capitalize()}'")
+        self.root.geometry("900x700")
+        
+        # Khởi tạo HandGestureCorrection
+        self.hand_gesture_correction = correction
+        
+        # Khởi tạo biến
+        self.recording = False
+        self.cap = None
+        self.practice_attempts = []
+        self.last_update_time = time.time()
+        self.last_evaluation_time = time.time()
+        
+        # Tạo giao diện
+        self.create_widgets()
 
+        
+    def create_widgets(self):
+        # Frame chính
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Tiêu đề
+        title = ttk.Label(main_frame, 
+                         text=f"Practice '{self.word.capitalize()}'", 
+                         font=("Arial", 16, "bold"))
+        title.grid(row=0, column=0, columnspan=2, pady=10)
+        
+        # Frame video tham khảo
+        ref_frame = ttk.LabelFrame(main_frame, text="Reference Video", padding="5")
+        ref_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        
+        self.vid_player = TkinterVideo(ref_frame, scaled=True)
+        self.vid_player.grid(row=0, column=0, sticky="nsew")
+        self.vid_player.load(f"../assets/videos/{self.word}.mp4")
+        self.vid_player.play()
+        
+        # Frame camera practice
+        practice_frame = ttk.LabelFrame(main_frame, text="Your Practice", padding="5")
+        practice_frame.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+        
+        self.video_label = ttk.Label(practice_frame)
+        self.video_label.grid(row=0, column=0, sticky="nsew")
+        
+        # Frame điều khiển
+        control_frame = ttk.Frame(main_frame, padding="5")
+        control_frame.grid(row=2, column=0, columnspan=2, pady=10)
+        
+        self.start_btn = ttk.Button(control_frame, 
+                                  text="Start Practice",
+                                  command=self.start_practice)
+        self.start_btn.grid(row=0, column=0, padx=5)
+        
+        self.stop_btn = ttk.Button(control_frame, 
+                                 text="Stop Practice",
+                                 command=self.stop_practice)
+        self.stop_btn.grid(row=0, column=1, padx=5)
+        
+        # Frame kết quả
+        self.result_label = ttk.Label(main_frame, 
+                                    text="Start practicing to get feedback",
+                                    font=("Arial", 12))
+        self.result_label.grid(row=3, column=0, columnspan=2, pady=10)
+        
+        # Cấu hình grid
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(1, weight=1)
+        
+    def start_practice(self):
+        self.cap = cv2.VideoCapture(0)
+        self.recording = True
+        self.predictions_array = []
+        self.last_update_time = time.time()
+        self.last_hand_positions = None
+        self.last_prediction_time = time.time()
+        self.update_practice_frame()
+        
+    def stop_practice(self):
+        self.recording = False
+        if self.cap is not None:
+            self.cap.release()
+        self.result_label.config(text="Practice stopped")
+        
+    def update_practice_frame(self):
+        if self.recording:
+            ret, frame = self.cap.read()
+            if ret:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(frame_rgb)
+                img = img.resize((600, 450))  # Resize để phù hợp với giao diện
+                imgtk = ImageTk.PhotoImage(image=img)
+                self.video_label.imgtk = imgtk
+                self.video_label.configure(image=imgtk)
+                
+                # Xử lý đánh giá cử chỉ tay
+                current_time = time.time()
+                if current_time - self.last_evaluation_time >= 1.0:  # Đánh giá mỗi giây
+                    try:
+                        # Kiểm tra kết quả MediaPipe
+                        results = self.hand_gesture_correction.mediapipe_detection(frame)
+                        
+                        # Kiểm tra xem có hand landmarks không
+                        if results.left_hand_landmarks or results.right_hand_landmarks:
+                            print("Hand landmarks detected!")
+                            
+                            # Trích xuất keypoints
+                            user_keypoints = self.hand_gesture_correction.extract_keypoints_normalized(results)
+                            
+                            # Tải keypoints tham chiếu
+                            reference_keypoints = self.hand_gesture_correction.load_reference_keypoints(self.word)
+                            
+                            if reference_keypoints is not None:
+                                # Đánh giá độ tương đồng
+                                score, errors = self.hand_gesture_correction.calculate_shape_similarity(
+                                    user_keypoints, 
+                                    reference_keypoints
+                                )
+                                
+                                print(f"Score: {score}")
+                                
+                                if errors:
+                                    # Có lỗi trong cử chỉ tay
+                                    print("Errors detected:", errors)
+                                    self.result_label.config(
+                                        text="Incorrect hand gesture. Try again!",
+                                        foreground="red"
+                                    )
+                                else:
+                                    # Cử chỉ tay chính xác
+                                    print("Correct hand gesture!")
+                                    self.result_label.config(
+                                        text=f"Good job! Accuracy: {score*100:.2f}%",
+                                        foreground="green"
+                                    )
+                            else:
+                                print(f"No reference keypoints found for word: {self.word}")
+                        else:
+                            print("No hand landmarks detected")
+                            self.result_label.config(
+                                text="No hand landmarks detected",
+                                foreground="red"
+                            )
+                        
+                        self.last_evaluation_time = current_time
+                    
+                    except Exception as e:
+                        print(f"Evaluation error: {e}")
+                
+            self.video_label.after(10, self.update_practice_frame)
+# Thêm function để tạo nút Practice trong word buttons
+def create_word_button_with_practice(parent, word, command):
+    frame = ttk.Frame(parent)
+    frame.pack(pady=5, anchor='w')
+    
+    word_btn = ttk.Button(frame, text=word, command=command, width=12)
+    word_btn.pack(side=tk.LEFT, padx=(0, 5))
+    
+    practice_btn = ttk.Button(
+        frame,
+        text="Practice",
+        command=lambda: PracticeWindow(word),
+        width=8
+    )
+    practice_btn.pack(side=tk.LEFT)
+    
+    return frame
+
+# Cập nhật hàm update_word_list để sử dụng button mới
 def update_word_list(category):
     for button in word_buttons:
         button.pack_forget()
-
-    # Tạo danh sách từ dựa trên category được chọn
+    
     if category == "alphabet":
-        words_to_display = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
+        words_to_display = ["a", "b", "c", "d", "o","u","v","y"]
     elif category == "verbs":
-        words_to_display = ["eat", "drink", "go", "have", "read", "write", "love", "open", "play", "take", "learn", "use"]
+        words_to_display = ["eat", "drink", "go", "have", "read", "write", "love", "open", 
+                           "play", "learn", "please","thank you", "use"]
     elif category == "nouns":
-        words_to_display = ["book", "water", "phone", "house", "school", "money", "car", "bed", "table", "chair", "friend", "family"]
-
-    # Set a fixed width for the buttons
-    button_width = 12  # You can adjust this width as needed
+        words_to_display = ["book", "water", "phone", "house", "school", "money", "me"]
 
     for word in words_to_display:
-        btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", 
-                        command=lambda w=word: play_vocab_video(w), width=button_width)
-        btn.pack(pady=5, anchor='w')
-        word_buttons.append(btn)
+        button_frame = create_word_button_with_practice(
+            sub_frame,
+            word,
+            lambda w=word: play_vocab_video(w)
+        )
+        word_buttons.append(button_frame)
 
 # Video control buttons in Video Frame
 record_btn = tk.Button(top_frame, text="Record Video", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=record_video)
