@@ -1,0 +1,10 @@
+tk 
+pillowpillow
+mediapipe
+tkVideoPlayer
+sv_ttk
+
+joblib
+opencv-python
+
+requests
