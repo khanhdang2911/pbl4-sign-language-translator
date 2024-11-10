@@ -79,75 +79,181 @@ def show_quiz_frame():
 
 
 # Main frame
-main_frame = tk.Frame(root, bg="#f5f5f5")
+main_frame = tk.Frame(root, bg="#f0f2f5")
 main_frame.pack(fill="both", expand=True)
 
 # Home Frame
-home_frame = tk.Frame(main_frame, bg="#FFFFFF")
+home_frame = tk.Frame(main_frame, bg="white")
 home_frame.place(relwidth=1, relheight=1)
 
+try:
+    # Background Image
+    bg_image = Image.open("../assets/images/background.jpg")
+    bg_image = bg_image.resize((1200, 800), Image.LANCZOS)
+    bg_photo = ImageTk.PhotoImage(bg_image)
+    
+    bg_label = tk.Label(home_frame, image=bg_photo)
+    bg_label.image = bg_photo
+    bg_label.place(relwidth=1, relheight=1)
+except:
+    print("Không tìm thấy ảnh nền")
+
 # Header Section
-header_frame = tk.Frame(home_frame, bg="#4CAF50")
+header_frame = tk.Frame(home_frame, bg="#1877f2")
 header_frame.pack(fill="x")
 
-# Add App Image in Header
-app_image = Image.open("../assets/images/logo.png")  # Load your app logo
-app_image = app_image.resize((100, 100), Image.LANCZOS)  # Resize the image if necessary
-app_logo = ImageTk.PhotoImage(app_image)
+try:
+    # Add App Image in Header
+    app_image = Image.open("../assets/images/logo.png")
+    app_image = app_image.resize((80, 80), Image.LANCZOS)
+    app_logo = ImageTk.PhotoImage(app_image)
+    
+    logo_label = tk.Label(header_frame, image=app_logo, bg="#1877f2")
+    logo_label.pack(side=tk.LEFT, padx=20, pady=10)
+    logo_label.image = app_logo
+except:
+    print("Không tìm thấy logo")
 
-logo_label = tk.Label(header_frame, image=app_logo, bg="#4CAF50")
-logo_label.pack(side=tk.LEFT, padx=10)
-
-title_label = tk.Label(header_frame, text="Sign Language Translation & Learning", font=("Arial", 24, "bold"), bg="#4CAF50", fg="#fff")
+title_label = tk.Label(
+    header_frame, 
+    text="Sign Language Translation & Learning", 
+    font=("Helvetica", 24, "bold"), 
+    bg="#1877f2", 
+    fg="white"
+)
 title_label.pack(pady=20)
+
 # Button Section
-button_frame = tk.Frame(home_frame, bg="#FFFFFF")
-button_frame.pack(pady=30)
+button_frame = tk.Frame(home_frame, bg="white")
+button_frame.pack(pady=40)
 
-# Create Buttons with Icons (Optional)
-btn1 = tk.Button(button_frame, text="Translate Sign Language", font=("Arial", 16, "bold"), bg="#4CAF50", fg="#fff", command=show_video_frame)
-btn1.pack(pady=10, padx=20, fill="x")
+# Custom style cho buttons
+class HoverButton(tk.Button):
+    def __init__(self, master, **kw):
+        tk.Button.__init__(self, master=master, **kw)
+        self.defaultBackground = self["background"]
+        self.bind("<Enter>", self.on_enter)
+        self.bind("<Leave>", self.on_leave)
 
-btn2 = tk.Button(button_frame, text="Learn Sign Language", font=("Arial", 16, "bold"), bg="#2196F3", fg="#fff", command=show_vocab_frame)
-btn2.pack(pady=10, padx=20, fill="x")
+    def on_enter(self, e):
+        color = self["background"]
+        rgb = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
+        darker = tuple(max(0, c - 30) for c in rgb)
+        self["background"] = f"#{darker[0]:02x}{darker[1]:02x}{darker[2]:02x}"
 
-btn_quiz = tk.Button(button_frame, text="Vocabulary Quiz", font=("Arial", 16, "bold"), bg="#FF5722", fg="#fff", command=show_quiz_frame)
-btn_quiz.pack(pady=10, padx=20, fill="x")
+    def on_leave(self, e):
+        self["background"] = self.defaultBackground
 
-# Footer Section (optional)
-footer_frame = tk.Frame(home_frame, bg="#f5f5f5")
+# Buttons with rounded corners and hover effect
+btn1 = HoverButton(
+    button_frame,
+    text="Translate Sign Language",
+    font=("Helvetica", 14, "bold"),
+    bg="#1877f2",
+    fg="white",
+    relief="flat",
+    command=show_video_frame,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"  # Hand cursor on hover
+)
+btn1.pack(pady=15)
+
+btn2 = HoverButton(
+    button_frame,
+    text="Learn Sign Language",
+    font=("Helvetica", 14, "bold"),
+    bg="#42b72a",
+    fg="white",
+    relief="flat",
+    command=show_vocab_frame,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"
+)
+btn2.pack(pady=15)
+
+btn_quiz = HoverButton(
+    button_frame,
+    text="Vocabulary Quiz",
+    font=("Helvetica", 12, "bold"),
+    bg="#f02849",
+    fg="white",
+    relief="flat",
+    command=show_quiz_frame,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"
+)
+btn_quiz.pack(pady=15)
+
+# Footer
+footer_frame = tk.Frame(home_frame, bg="#f0f2f5")
 footer_frame.pack(side="bottom", fill="x")
 
-footer_label = tk.Label(footer_frame, text="© 2024 Sign Language Learning App. All Rights Reserved.", font=("Arial", 10), bg="#f5f5f5", fg="#333")
-footer_label.pack(pady=10)
+footer_label = tk.Label(
+    footer_frame,
+    text="© 2024 Sign Language Learning App. All Rights Reserved.",
+    font=("Helvetica", 10),
+    bg="#f0f2f5",
+    fg="#65676b"
+)
+footer_label.pack(pady=15)
 
-# Keep a reference to the image to avoid garbage collection
-logo_label.image = app_logo
-
-
-# Add some padding around the main frame
-home_frame.pack_propagate(False)  # Prevent frame from resizing to fit contents
-
-
-# Video Frame
-video_frame = tk.Frame(main_frame, bg="#f5f5f5")
+# Video Frame - giữ nguyên logic gốc
+video_frame = tk.Frame(main_frame, bg="#f0f2f5")
 video_frame.place(relwidth=1, relheight=1)
 
-top_frame = tk.Frame(video_frame, bg="#f5f5f5")
-top_frame.pack(side=tk.TOP, fill="x", padx=10, pady=10)
+top_frame = tk.Frame(video_frame, bg="#f0f2f5")
+top_frame.pack(side=tk.TOP, fill="x", padx=20, pady=20)
 
-lower_frame = tk.Frame(video_frame, bg="#FFFFFF")
+lower_frame = tk.Frame(video_frame, bg="white")
 lower_frame.pack(fill="both", side=BOTTOM)
 
+# Video player với style mới nhưng giữ nguyên logic
 vid_player = TkinterVideo(video_frame, scaled=True)
-vid_player.pack(expand=True, fill="both", padx=10, pady=10)
+vid_player.pack(expand=True, fill="both", padx=2, pady=2)
 
-text_box = tk.Text(video_frame, height=5, width=80, font=("Arial", 16,"bold"), fg="#333", bg="#f5f5f5")
-text_box.pack(pady=10, fill="x")
+text_box = tk.Text(
+    video_frame,
+    height=5,
+    width=80,
+    font=("Helvetica", 14),
+    fg="#050505",
+    bg="white",
+    relief="flat",
+    padx=15,
+    pady=15
+)
+text_box.pack(pady=2, padx=2, fill="x")
 text_box.insert("1.0", "This is a text box to display text below the video.")
-
+text_box.config(height=3)  # Giảm chiều cao của text box
+# Thêm nút Back to Home
+back_to_home_btn = HoverButton(
+    video_frame,
+    text="Back to Home",
+    font=("Helvetica", 14, "bold"),
+    bg="#FFFFFF",
+    fg="#333",
+    relief="flat",
+    command=show_home_frame,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
+# Giữ nguyên video_label theo yêu cầu
 video_label = tk.Label(vid_player)
 video_label.pack()
+
+# Logo reference
+logo_label.image = app_logo
+
+# Prevent frame resizing
+home_frame.pack_propagate(False)
 
 
 def calculate_hand_movement(current_results, last_positions):
@@ -357,6 +463,7 @@ def stop_recording():
     else:
         text_box.delete("1.0", "end")
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
+    back_to_home_btn.config(state=tk.NORMAL)  # This enables the button again after recording
 
 
 class PracticeWindow:
@@ -381,7 +488,7 @@ class PracticeWindow:
 
         
     def create_widgets(self):
-        # Frame chính
+               # Frame chính
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
@@ -407,19 +514,25 @@ class PracticeWindow:
         self.video_label = ttk.Label(practice_frame)
         self.video_label.grid(row=0, column=0, sticky="nsew")
         
-        # Frame điều khiển
+        # Frame điều khiển với các nút gọn gàng
         control_frame = ttk.Frame(main_frame, padding="5")
         control_frame.grid(row=2, column=0, columnspan=2, pady=10)
         
         self.start_btn = ttk.Button(control_frame, 
-                                  text="Start Practice",
+                                  text="Start Practice", 
+                                  style="TButton",
                                   command=self.start_practice)
-        self.start_btn.grid(row=0, column=0, padx=5)
+        self.start_btn.grid(row=0, column=0, padx=5, pady=5)
         
         self.stop_btn = ttk.Button(control_frame, 
-                                 text="Stop Practice",
+                                 text="Stop Practice", 
+                                 style="TButton",
                                  command=self.stop_practice)
-        self.stop_btn.grid(row=0, column=1, padx=5)
+        self.stop_btn.grid(row=0, column=1, padx=5, pady=5)
+        
+        # Style nút button để gọn gàng hơn
+        style = ttk.Style()
+        style.configure("TButton", padding=6, relief="flat", width=15, font=("Arial", 10, "bold"))
         
         # Frame kết quả
         self.result_label = ttk.Label(main_frame, 
@@ -518,14 +631,33 @@ def create_word_button_with_practice(parent, word, command):
     frame = ttk.Frame(parent)
     frame.pack(pady=5, anchor='w')
     
-    word_btn = ttk.Button(frame, text=word, command=command, width=12)
+    word_btn = HoverButton(
+        frame,
+        text=word,
+        font=("Arial", 10, "bold"),
+        bg="#ff7675",
+        fg="#fff",
+        relief="flat",
+        command=command,
+        padx=5,
+        pady=2,
+        width=8,
+        cursor="hand2"
+    )
     word_btn.pack(side=tk.LEFT, padx=(0, 5))
     
-    practice_btn = ttk.Button(
+    practice_btn = HoverButton(
         frame,
         text="Practice",
+        font=("Arial", 10, "bold"),
+        bg="#00cec9",
+        fg="#fff",
+        relief="flat",
         command=lambda: PracticeWindow(word),
-        width=8
+        padx=5,
+        pady=2,
+        width=8,
+        cursor="hand2"
     )
     practice_btn.pack(side=tk.LEFT)
     
@@ -553,13 +685,49 @@ def update_word_list(category):
         word_buttons.append(button_frame)
 
 # Video control buttons in Video Frame
-record_btn = tk.Button(top_frame, text="Record Video", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=record_video)
+record_btn = HoverButton(
+    top_frame,
+    text="Record Video",
+    font=("Arial", 12, "bold"),
+    bg="#4CAF50",
+    fg="#fff",
+    relief="flat",
+    command=record_video,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 record_btn.pack(side=tk.LEFT, padx=5)
 
-stop_btn = tk.Button(top_frame, text="Stop Recording", bg="#FF0000", font=("Arial", 12, "bold"), fg="#fff", command=stop_recording)
+stop_btn = HoverButton(
+    top_frame,
+    text="Stop Recording",
+    font=("Arial", 12, "bold"),
+    bg="#FF0000",
+    fg="#fff",
+    relief="flat",
+    command=stop_recording,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 stop_btn.pack(side=tk.LEFT, padx=5)
 
-back_to_home_btn = tk.Button(video_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
+back_to_home_btn = HoverButton(
+    video_frame,
+    text="Back to Home",
+    font=("Helvetica", 14, "bold"),
+    bg="#FFFFFF",
+    fg="#333",
+    relief="flat",
+    command=show_home_frame,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
 
 # Vocabulary Frame
@@ -573,23 +741,60 @@ vocab_title.pack(pady=20)
 category_frame = tk.Frame(vocab_frame, bg="#f0f0f0")
 category_frame.pack(fill="x", pady=10)
 
-alphabet_btn = tk.Button(category_frame, text="Alphabet", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=lambda: update_word_list("alphabet"))
+alphabet_btn = HoverButton(
+    category_frame,
+    text="Alphabet",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=lambda: update_word_list("alphabet"),
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 alphabet_btn.pack(side=tk.LEFT, padx=10)
 
-verbs_btn = tk.Button(category_frame, text="Verbs", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=lambda: update_word_list("verbs"))
+verbs_btn = HoverButton(
+    category_frame,
+    text="Verbs",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=lambda: update_word_list("verbs"),
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 verbs_btn.pack(side=tk.LEFT, padx=10)
 
-nouns_btn = tk.Button(category_frame, text="Nouns", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=lambda: update_word_list("nouns"))
+nouns_btn = HoverButton(
+    category_frame,
+    text="Nouns",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=lambda: update_word_list("nouns"),
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 nouns_btn.pack(side=tk.LEFT, padx=10)
 
 search_frame = tk.Frame(vocab_frame, bg="#f0f0f0")
 search_frame.pack(side=tk.TOP, fill="x")
 
-search_label = tk.Label(search_frame, text="Search word:", font=("Arial", 14), bg="#f0f0f0")
+search_label = tk.Label(search_frame, text="Search word:", font=("Arial", 14, "bold"), bg="#f0f0f0", fg="#333")
+
 search_label.pack(side=tk.LEFT, padx=10)
 
 search_var = tk.StringVar()
-search_entry = tk.Entry(search_frame, textvariable=search_var, font=("Arial", 14), bg="#fff", fg="#333")
+search_entry = ttk.Entry(search_frame, textvariable=search_var, font=("Arial", 14))
 search_entry.pack(side=tk.LEFT, padx=10, fill="x", expand=True)
 
 def search_word():
@@ -600,7 +805,19 @@ def search_word():
         else:
             button.pack_forget()
 
-search_btn = tk.Button(search_frame, text="Search", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=search_word)
+search_btn = HoverButton(
+    search_frame,
+    text="Search",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=search_word,
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 search_btn.pack(side=tk.LEFT, padx=10)
 
 sub_frame = tk.Frame(vocab_frame, bg="#f0f0f0", width=150)
@@ -623,29 +840,52 @@ def play_vocab_video(word):
         text_box.insert("1.0", f"Video for '{word}' not found.")
 button_width = 12
 for word in words:
-    btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", 
-                        command=lambda w=word: play_vocab_video(w), width=button_width)
+    btn = HoverButton(
+        sub_frame,
+        text=word,
+        font=("Arial", 14, "bold"),
+        bg="#ff7675",
+        fg="#fff",
+        relief="flat",
+        command=lambda w=word: play_vocab_video(w),
+        width=button_width,
+        cursor="hand2"
+    )
     btn.pack(pady=5, anchor='w')
     word_buttons.append(btn)
 
 vid_player_vocab = TkinterVideo(vocab_frame, scaled=True)
 vid_player_vocab.pack(expand=True, fill="both", padx=10, pady=10)
 
-back_to_home_btn = tk.Button(vocab_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
-back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
+# tro ve
+back_to_home_btn = HoverButton(
+    vocab_frame,
+    text="Back to Home",
+    font=("Helvetica", 12, "bold"),  # Giảm kích thước font
+    bg="#FFFFFF",
+    fg="#333",
+    relief="flat",
+    command=show_home_frame,
+    padx=8,  # Giảm padding
+    pady=4,  # Giảm padding
+    width=12,  # Giảm chiều rộng
+    cursor="hand2"
+)
+back_to_home_btn.pack(side=tk.BOTTOM, pady=8)  # Giảm khoảng cách padding
 
 # Quiz Frame (for the Vocabulary Quiz section)
 quiz_frame = tk.Frame(main_frame, bg="#f5f5f5")
 quiz_frame.place(relwidth=1, relheight=1)
 
-quiz_title_label = tk.Label(quiz_frame, text="Vocabulary Quiz", font=("Arial", 24, "bold"), bg="#f5f5f5", fg="#333")
-quiz_title_label.pack(pady=20)
+quiz_title_label = tk.Label(quiz_frame, text="Vocabulary Quiz", font=("Arial", 20, "bold"), bg="#f5f5f5", fg="#333")
+quiz_title_label.pack(pady=5)
 
-quiz_instruction_label = tk.Label(quiz_frame, text="Select the correct word for the video shown:", font=("Arial", 16), bg="#f5f5f5", fg="#333")
-quiz_instruction_label.pack(pady=10)
+quiz_instruction_label = tk.Label(quiz_frame, text="Select the correct word for the video shown:", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_instruction_label.pack(pady=7)
 
 quiz_vid_player = TkinterVideo(quiz_frame, scaled=True)
 quiz_vid_player.pack(expand=True, fill="both", padx=10, pady=10)
+
 
 random_word = "goodbye"
 random_word_incorrect = "hello"
@@ -684,7 +924,19 @@ def start_quiz(random_word):
     quiz_vid_player.play()
 
 # Sử dụng lambda để không gọi hàm ngay lập tức
-start_quiz_btn = tk.Button(quiz_frame, text="Start Quiz", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=lambda: start_quiz(random_word))
+start_quiz_btn = HoverButton(
+    quiz_frame,
+    text="Start Quiz",
+    font=("Helvetica", 12, "bold"),
+    bg="#4CAF50",
+    fg="#fff",
+    relief="flat",
+    command=lambda: start_quiz(random_word),
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 start_quiz_btn.pack(pady=10)
 quiz_option_var = tk.StringVar()
 
@@ -695,27 +947,62 @@ def check_answer():
     else:
         quiz_instruction_label.config(text="Wrong answer. Try again!", fg="#FF0000", font=("Arial", 16, "bold"))
 
-quiz_option_1 = tk.Radiobutton(quiz_frame, text="goodbye", variable=quiz_option_var, value="goodbye", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_1.pack(anchor='w', padx=20)
+quiz_option_1 = tk.Radiobutton(quiz_frame, text="Goodbye", variable=quiz_option_var, value="goodbye", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_1.pack(anchor='w', padx=2, pady=1)
 
-quiz_option_2 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_2.pack(anchor='w', padx=20)
-# Thêm 2 radio buttons mới vào phần giao diện (đặt ngay sau quiz_option_2):
-quiz_option_3 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_3.pack(anchor='w', padx=20)
+quiz_option_2 = tk.Radiobutton(quiz_frame, text="Hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_2.pack(anchor='w', padx=2, pady=1)
 
-quiz_option_4 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_4.pack(anchor='w', padx=20)
+quiz_option_3 = tk.Radiobutton(quiz_frame, text="Yes", variable=quiz_option_var, value="yes", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_3.pack(anchor='w', padx=2, pady=1)
 
-quiz_submit_btn = tk.Button(quiz_frame, text="Submit Answer", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=check_answer)
-quiz_submit_btn.pack(pady=20)
+quiz_option_4 = tk.Radiobutton(quiz_frame, text="No", variable=quiz_option_var, value="no", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_4.pack(anchor='w', padx=2, pady=1)
 
-quiz_random_btn = tk.Button(quiz_frame, text="Random Quiz", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=quiz_random_word)
-quiz_random_btn.pack(pady=20)
+quiz_submit_btn = HoverButton(
+    quiz_frame,
+    text="Submit Answer",
+    font=("Helvetica", 10, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=check_answer,
+    padx=7,
+    pady=3,
+    width=10,
+    cursor="hand2"
+)
+quiz_submit_btn.pack(pady=5)
 
-back_to_home_btn = tk.Button(quiz_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
-back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
+quiz_random_btn = HoverButton(
+    quiz_frame,
+    text="Random Quiz",
+    font=("Helvetica", 10, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=quiz_random_word,
+    padx=7,
+    pady=3,
+    width=10,
+    cursor="hand2"
+)
+quiz_random_btn.pack(pady=5)
 
+back_to_home_btn = HoverButton(
+    quiz_frame,
+    text="Back to Home",
+    font=("Helvetica", 14, "bold"),
+    bg="#FFFFFF",
+    fg="#333",
+    relief="flat",
+    command=show_home_frame,
+    padx=8,
+    pady=5,
+    width=10,
+    cursor="hand2"
+)
+back_to_home_btn.pack(side=tk.BOTTOM, pady=7)
 # Start with home_frame raised
 home_frame.tkraise()
 
