@@ -314,8 +314,11 @@ def calculate_hand_movement(current_results, last_positions):
     except:
         return 1.0
 
+API_URL = "http://127.0.0.1:3000/predict/"
+frame_rate = 30  # 30 FPS
+
 def update_video_frame():
-    global recording, cap, predictor, text_box, resultPredict
+    global recording, cap, text_box, resultPredict
     
     # Khởi tạo mảng dự đoán cho mỗi giây
     if not hasattr(update_video_frame, 'predictions'):
@@ -334,14 +337,43 @@ def update_video_frame():
             
             current_time = time.time()
             
-            # Thực hiện dự đoán mỗi 100ms
+            # Thực hiện dự đoán với API
             try:
-                prediction = predictor.predict(frame)[0]  # Lấy kết quả dự đoán
-                update_video_frame.predictions.append(prediction)
+                # Chuyển đổi frame thành bytes
+                _, img_encoded = cv2.imencode('.jpg', frame)
+                files = {'file': ('image.jpg', img_encoded.tobytes(), 'image/jpeg')}
+                
+                # Gọi API
+                response = requests.post(API_URL, files=files)
+                
+                if response.status_code == 200:
+                    prediction_data = response.json()
+                    prediction = prediction_data['prediction']
+                    confidence = prediction_data['confidence']
+                    
+                    # Thêm vào danh sách dự đoán
+                    update_video_frame.predictions.append(prediction)
+                    
+                    # Hiển thị kết quả trực tiếp trên frame
+                    text = f"Prediction: {prediction}, Confidence: {confidence:.2f}"
+                    frame_with_text = frame.copy()
+                    cv2.putText(frame_with_text, text, (10, 30), 
+                              cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
+                    
+                    # Cập nhật hiển thị frame với text
+                    frame_rgb = cv2.cvtColor(frame_with_text, cv2.COLOR_BGR2RGB)
+                    img = Image.fromarray(frame_rgb)
+                    imgtk = ImageTk.PhotoImage(image=img)
+                    video_label.imgtk = imgtk
+                    video_label.configure(image=imgtk)
+                    
+                else:
+                    print(f"API error: Status code {response.status_code}, {response.text}")
+                    
             except Exception as e:
-                print(f"Prediction error: {e}")
+                print(f"API call error: {e}")
             
-            # Mỗi 1 giây, phân tích kết quả
+            # Mỗi 1 giây, phân tích kết quả tổng hợp
             if current_time - update_video_frame.last_time >= 1.0:
                 if update_video_frame.predictions:
                     # Đếm số lần xuất hiện của mỗi từ
@@ -361,19 +393,19 @@ def update_video_frame():
                             max_confidence = confidence
                             max_word = word
                     
-                    # Nếu từ xuất hiện trên 60% trong 1s, lưu kết quả và hiển thị
+                    # Nếu từ xuất hiện trên 60% trong 1s, lưu kết quả
                     if max_confidence >= 0.6:
-                        # Lưu kết quả vào resultPredict
                         resultPredict.append({
                             'word': max_word,
                             'confidence': max_confidence
                         })
                         
-                        # Hiển thị kết quả hiện tại
+                        # Hiển thị kết quả tổng hợp trong text box
                         result_text = (
-                            f"Predicted Word: {max_word}\n"
+                            f"Aggregated Result:\n"
+                            f"Word: {max_word}\n"
                             f"Confidence: {max_confidence*100:.2f}%\n"
-                            f"Total predictions: {total_predictions}"
+                            f"Total predictions in last second: {total_predictions}"
                         )
                         text_box.delete("1.0", "end")
                         text_box.insert("1.0", result_text)
@@ -382,8 +414,10 @@ def update_video_frame():
                 update_video_frame.predictions = []
                 update_video_frame.last_time = current_time
             
-            video_label.after(100, update_video_frame)  # Cập nhật mỗi 100ms
-            
+            # Delay 30ms (tương đương với frame rate 30 FPS)
+            video_label.after(30, update_video_frame)
+
+
 def record_video():
     global cap, recording, predictor, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
     cap = cv2.VideoCapture(0)
