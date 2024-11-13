@@ -15,8 +15,6 @@ from learning_model import HandGestureCorrection
 # Thêm imports cần thiết ở đầu file
 
 # Khởi tạo predictor
-model_filename = 'LargerDataset.joblib'
-predictor = HandGesturePredictor(model_filename)
 correction = HandGestureCorrection()
 predictions_array = []  # Mảng lưu các dự đoán
 last_update_time = time.time()  # Thời điểm cập nhật cuối
@@ -256,63 +254,8 @@ logo_label.image = app_logo
 home_frame.pack_propagate(False)
 
 
-def calculate_hand_movement(current_results, last_positions):
-    if last_positions is None:
-        return 1.0  # Trả về giá trị lớn để chắc chắn xử lý frame đầu tiên
-    
-    # Lấy landmarks của tay hiện tại
-    current_positions = []
-    if current_results.left_hand_landmarks:
-        for landmark in current_results.left_hand_landmarks.landmark:
-            current_positions.extend([landmark.x, landmark.y, landmark.z])
-    if current_results.right_hand_landmarks:
-        for landmark in current_results.right_hand_landmarks.landmark:
-            current_positions.extend([landmark.x, landmark.y, landmark.z])
-            
-    if not current_positions:
-        return 1.0  # Không phát hiện tay trong frame hiện tại
-        
-    current_positions = np.array(current_positions)
-    
-    # Tính toán sự thay đổi vị trí trung bình
-    movement = np.mean(np.abs(current_positions - last_positions))
-    return movement
-# Video recording control variable
 recording = False
 
-def calculate_hand_movement(current_results, last_positions):
-    if last_positions is None:
-        return 1.0  # Trả về giá trị lớn để chắc chắn xử lý frame đầu tiên
-    
-    # Lấy landmarks của tay hiện tại
-    current_positions = []
-    hand_count = 0
-    
-    if current_results.left_hand_landmarks:
-        for landmark in current_results.left_hand_landmarks.landmark:
-            current_positions.extend([landmark.x, landmark.y, landmark.z])
-        hand_count += 1
-            
-    if current_results.right_hand_landmarks:
-        for landmark in current_results.right_hand_landmarks.landmark:
-            current_positions.extend([landmark.x, landmark.y, landmark.z])
-        hand_count += 1
-            
-    if not current_positions:
-        return 1.0  # Không phát hiện tay trong frame hiện tại
-        
-    current_positions = np.array(current_positions)
-    
-    # Nếu số lượng tay phát hiện được khác với frame trước
-    if len(current_positions) != len(last_positions):
-        return 1.0
-    
-    # Tính toán sự thay đổi vị trí trung bình
-    try:
-        movement = np.mean(np.abs(current_positions - last_positions))
-        return movement
-    except:
-        return 1.0
 
 API_URL = "http://127.0.0.1:3000/predict/"
 frame_rate = 30  # 30 FPS
@@ -419,7 +362,7 @@ def update_video_frame():
 
 
 def record_video():
-    global cap, recording, predictor, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
+    global cap, recording, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
     cap = cv2.VideoCapture(0)
     recording = True
     
@@ -429,10 +372,7 @@ def record_video():
     last_hand_positions = None
     last_hand_count = 0
     last_prediction_time = time.time()
-    
-    model_filename = 'LargerDataset.joblib'
-    predictor = HandGesturePredictor(model_filename)
-    
+        
     update_video_frame()
 
 def stop_recording():
