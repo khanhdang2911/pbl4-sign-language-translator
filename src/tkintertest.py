@@ -176,7 +176,7 @@ btn2.pack(pady=15)
 btn_quiz = HoverButton(
     button_frame,
     text="Vocabulary Quiz",
-    font=("Helvetica", 12, "bold"),
+    font=("Helvetica", 14, "bold"),
     bg="#f02849",
     fg="white",
     relief="flat",
