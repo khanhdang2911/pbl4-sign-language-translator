@@ -92,23 +92,6 @@ def show_quiz_frame():
     quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
     quiz_vid_player.play()
 
-# Login Frame
-login_frame.pack(fill='both', expand=True)
-
-login_label = tk.Label(login_frame, text="Login", font=("Arial", 24, "bold"), bg="#f5f5f5")
-login_label.pack(pady=20)
-
-username_label = tk.Label(login_frame, text="Username:", bg="#f5f5f5")
-username_label.pack(pady=5)
-
-username_entry = tk.Entry(login_frame)
-username_entry.pack(pady=5)
-
-password_label = tk.Label(login_frame, text="Password:", bg="#f5f5f5")
-password_label.pack(pady=5)
-
-password_entry = tk.Entry(login_frame, show="*")
-password_entry.pack(pady=5)
 
 def login():
     global user_id
@@ -132,11 +115,69 @@ def login():
     except requests.exceptions.RequestException as e:
         error_label.config(text="Error connecting to server. Please check your internet connection.", fg="red")
 
-login_button = tk.Button(login_frame, text="Login", command=login)
-login_button.pack(pady=20)
 
-error_label = tk.Label(login_frame, text="", bg="#f5f5f5")
+# Login Frame
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+# Set background image
+bg_image = Image.open("../assets/images/login_background.jpg")
+bg_image = bg_image.resize((screen_width, screen_height), Image.LANCZOS)
+bg_photo = ImageTk.PhotoImage(bg_image)
+
+bg_label = tk.Label(login_frame, image=bg_photo)
+bg_label.place(relwidth=1, relheight=1)
+
+# Add a centered container for the login elements
+login_container = tk.Frame(login_frame, bg="#ffffff", padx=100, pady=50, borderwidth=1, relief="solid")
+login_container.place(relx=0.5, rely=0.5, anchor="center")
+
+# Login label
+login_label = tk.Label(login_container, text="Login", font=("Arial", 20, "bold"), bg="#ffffff", fg="#333333")
+login_label.pack(pady=10)
+
+# Username label and entry
+username_frame = tk.Frame(login_container, bg="#ffffff")
+username_frame.pack(fill="x", pady=5)
+
+username_label = tk.Label(username_frame, text="Username:", bg="#ffffff", fg="#666666")
+username_label.pack(side=tk.LEFT, padx=(0,10))
+
+username_entry = tk.Entry(username_frame, bg="#f5f5f5", fg="#333333", highlightcolor="#4CAF50", highlightthickness=2)
+username_entry.pack(side=tk.LEFT, expand=True, fill="x")
+
+# Password label and entry 
+password_frame = tk.Frame(login_container, bg="#ffffff")
+password_frame.pack(fill="x", pady=5)
+
+password_label = tk.Label(password_frame, text="Password: ", bg="#ffffff", fg="#666666")
+password_label.pack(side=tk.LEFT, padx=(0,10))
+
+password_entry = tk.Entry(password_frame, show="*", bg="#f5f5f5", fg="#333333", highlightcolor="#4CAF50", highlightthickness=2)
+password_entry.pack(side=tk.LEFT, expand=True, fill="x")
+
+# Login button
+login_button = HoverButton(
+    login_container,
+    text="Login",
+    font=("Arial", 14, "bold"),
+    bg="#4CAF50",
+    fg="#ffffff",
+    relief="flat",
+    cursor="hand2",
+    command=login
+)
+login_button.pack(pady=15)
+
+
+# Error message label
+error_label = tk.Label(login_container, bg="#ffffff", fg="#ff0000")
 error_label.pack(pady=5)
+
+# Add the login frame to the main window
+login_frame.pack(fill='both', expand=True)
+
+
 
 # Create all other frames
 # Home Frame
@@ -158,14 +199,15 @@ title_label = tk.Label(header_frame, text="Sign Language Translation & Learning"
 title_label.pack(side=tk.LEFT, pady=20, expand=True)
 
 # Add Logout Button in Header
-logout_button = tk.Button(
-    header_frame, 
-    text="Logout", 
-    font=("Arial", 12, "bold"),
-    bg="#FF5722",
-    fg="#fff",
-    command=logout,
-    padx=20
+logout_button = HoverButton(
+    header_frame,
+    text="Logout",
+    font=("Arial", 14, "bold"),
+    bg="#f02849",
+    fg="white",
+    relief="flat",
+    cursor="hand2",
+    command=logout
 )
 logout_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
@@ -173,14 +215,50 @@ logout_button.pack(side=tk.RIGHT, padx=10, pady=10)
 button_frame = tk.Frame(home_frame, bg="#FFFFFF")
 button_frame.pack(pady=30)
 
-btn1 = tk.Button(button_frame, text="Translate Sign Language", font=("Arial", 16, "bold"), bg="#4CAF50", fg="#fff", command=show_video_frame)
-btn1.pack(pady=10, padx=20, fill="x")
+btn1 = HoverButton(
+    button_frame,
+    text="Translate Sign Language",
+    font=("Helvetica", 14, "bold"),
+    bg="#1877f2",
+    fg="white",
+    relief="flat",
+    command=show_video_frame,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"  # Hand cursor on hover
+)
+btn1.pack(pady=15)
 
-btn2 = tk.Button(button_frame, text="Learn Sign Language", font=("Arial", 16, "bold"), bg="#2196F3", fg="#fff", command=show_vocab_frame)
-btn2.pack(pady=10, padx=20, fill="x")
+btn2 = HoverButton(
+    button_frame,
+    text="Learn Sign Language",
+    font=("Helvetica", 14, "bold"),
+    bg="#42b72a",
+    fg="white",
+    relief="flat",
+    command=show_vocab_frame,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"
+)
+btn2.pack(pady=15)
 
-btn_quiz = tk.Button(button_frame, text="Vocabulary Quiz", font=("Arial", 16, "bold"), bg="#FF5722", fg="#fff", command=show_quiz_frame)
-btn_quiz.pack(pady=10, padx=20, fill="x")
+btn_quiz = HoverButton(
+    button_frame,
+    text="Vocabulary Quiz",
+    font=("Helvetica", 12, "bold"),
+    bg="#f02849",
+    fg="white",
+    relief="flat",
+    command=show_quiz_frame,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"
+)
+btn_quiz.pack(pady=15)
 
 # Footer
 footer_frame = tk.Frame(home_frame, bg="#f5f5f5")
@@ -707,14 +785,49 @@ def update_word_list(category):
         )
         word_buttons.append(button_frame)
 
-
-alphabet_btn = tk.Button(category_frame, text="Alphabet", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=lambda: update_word_list("alphabet"))
+alphabet_btn = HoverButton(
+    category_frame,
+    text="Alphabet",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=lambda: update_word_list("alphabet"),
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 alphabet_btn.pack(side=tk.LEFT, padx=10)
 
-verbs_btn = tk.Button(category_frame, text="Verbs", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=lambda: update_word_list("verbs"))
+verbs_btn = HoverButton(
+    category_frame,
+    text="Verbs",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=lambda: update_word_list("verbs"),
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 verbs_btn.pack(side=tk.LEFT, padx=10)
 
-nouns_btn = tk.Button(category_frame, text="Nouns", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=lambda: update_word_list("nouns"))
+nouns_btn = HoverButton(
+    category_frame,
+    text="Nouns",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=lambda: update_word_list("nouns"),
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 nouns_btn.pack(side=tk.LEFT, padx=10)
 
 # Search functionality
@@ -736,16 +849,29 @@ def search_word():
         else:
             button.pack_forget()
 
-search_btn = tk.Button(search_frame, text="Search", font=("Arial", 14), bg="#03A9F4", fg="#fff", command=search_word)
+search_btn = HoverButton(
+    search_frame,
+    text="Search",
+    font=("Arial", 12, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=search_word,
+    padx=8,
+    pady=4,
+    width=8,
+    cursor="hand2"
+)
 search_btn.pack(side=tk.LEFT, padx=10)
 
 # Word list frame
 sub_frame = tk.Frame(vocab_frame, bg="#f0f0f0", width=150)
 sub_frame.pack(side=tk.LEFT, fill="y")
 
-words = ["goodbye", "thanks", "sorry", "hello", "please"] + \
-        ["eat", "drink", "go", "have", "read", "write", "love", "open", "play", "take", "learn", "use"] + \
-        ["book", "water", "phone", "house", "school", "money", "car", "bed", "table", "chair", "friend", "family"]
+words = ["a", "b", "c", "d", "o","u","v","y"] + \
+        ["eat", "drink", "go", "have", "read", "write", "love", "open", 
+                           "play", "learn", "please","thank you", "use"] + \
+        ["book", "water", "phone", "house", "school", "money", "me"]
 
 def play_vocab_video(word):
     video_path = f"../assets/videos/{word}.mp4"
@@ -757,8 +883,19 @@ def play_vocab_video(word):
 
 button_width = 12
 for word in words:
-    btn = tk.Button(sub_frame, text=word, font=("Arial", 14), bg="#FFFFFF", fg="#333", 
-                    command=lambda w=word: play_vocab_video(w), width=button_width)
+    btn = HoverButton(
+        sub_frame,
+        text=word,
+        font=("Arial", 12, "bold"),
+        bg="#4CAF50",
+        fg="#fff",
+        relief="flat",
+        command=lambda w=word: play_vocab_video(w),
+        padx=10,
+        pady=5,
+        width=button_width,
+        cursor="hand2"
+    )
     btn.pack(pady=5, anchor='w')
     word_buttons.append(btn)
 
@@ -817,7 +954,19 @@ def start_quiz(random_word):
     quiz_vid_player.play()
 
 # Sử dụng lambda để không gọi hàm ngay lập tức
-start_quiz_btn = tk.Button(quiz_frame, text="Start Quiz", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=lambda: start_quiz(random_word))
+start_quiz_btn = HoverButton(
+    quiz_frame,
+    text="Start Quiz",
+    font=("Helvetica", 12, "bold"),
+    bg="#4CAF50",
+    fg="#fff",
+    relief="flat",
+    command=lambda: start_quiz(random_word),
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 start_quiz_btn.pack(pady=10)
 quiz_option_var = tk.StringVar()
 
@@ -828,26 +977,62 @@ def check_answer():
     else:
         quiz_instruction_label.config(text="Wrong answer. Try again!", fg="#FF0000", font=("Arial", 16, "bold"))
 
-quiz_option_1 = tk.Radiobutton(quiz_frame, text="goodbye", variable=quiz_option_var, value="goodbye", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_1.pack(anchor='w', padx=20)
+quiz_option_1 = tk.Radiobutton(quiz_frame, text="Goodbye", variable=quiz_option_var, value="goodbye", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_1.pack(anchor='w', padx=2, pady=1)
 
-quiz_option_2 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_2.pack(anchor='w', padx=20)
-# Thêm 2 radio buttons mới vào phần giao diện (đặt ngay sau quiz_option_2):
-quiz_option_3 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_3.pack(anchor='w', padx=20)
+quiz_option_2 = tk.Radiobutton(quiz_frame, text="Hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_2.pack(anchor='w', padx=2, pady=1)
 
-quiz_option_4 = tk.Radiobutton(quiz_frame, text="hello", variable=quiz_option_var, value="hello", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_option_4.pack(anchor='w', padx=20)
+quiz_option_3 = tk.Radiobutton(quiz_frame, text="Yes", variable=quiz_option_var, value="yes", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_3.pack(anchor='w', padx=2, pady=1)
 
-quiz_submit_btn = tk.Button(quiz_frame, text="Submit Answer", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=check_answer)
-quiz_submit_btn.pack(pady=20)
+quiz_option_4 = tk.Radiobutton(quiz_frame, text="No", variable=quiz_option_var, value="no", font=("Arial", 14), bg="#f5f5f5", fg="#333")
+quiz_option_4.pack(anchor='w', padx=2, pady=1)
 
-quiz_random_btn = tk.Button(quiz_frame, text="Random Quiz", bg="#03A9F4", font=("Arial", 12, "bold"), fg="#fff", command=quiz_random_word)
-quiz_random_btn.pack(pady=20)
+quiz_submit_btn = HoverButton(
+    quiz_frame,
+    text="Submit Answer",
+    font=("Helvetica", 10, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=check_answer,
+    padx=7,
+    pady=3,
+    width=10,
+    cursor="hand2"
+)
+quiz_submit_btn.pack(pady=5)
 
-back_to_home_btn = tk.Button(quiz_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
-back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
+quiz_random_btn = HoverButton(
+    quiz_frame,
+    text="Random Quiz",
+    font=("Helvetica", 10, "bold"),
+    bg="#03A9F4",
+    fg="#fff",
+    relief="flat",
+    command=quiz_random_word,
+    padx=7,
+    pady=3,
+    width=10,
+    cursor="hand2"
+)
+quiz_random_btn.pack(pady=5)
+
+back_to_home_btn = HoverButton(
+    quiz_frame,
+    text="Back to Home",
+    font=("Helvetica", 14, "bold"),
+    bg="#FFFFFF",
+    fg="#333",
+    relief="flat",
+    command=show_home_frame,
+    padx=8,
+    pady=5,
+    width=10,
+    cursor="hand2"
+)
+back_to_home_btn.pack(side=tk.BOTTOM, pady=7)
 
 # Start with login_frame raised
 login_frame.tkraise()
