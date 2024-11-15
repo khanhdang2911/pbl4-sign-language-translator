@@ -10,7 +10,6 @@ from tkVideoPlayer import TkinterVideo
 from tkinter import filedialog
 import os  # them thu vien os de check file ton tai
 import random #random quiz
-from model import HandGesturePredictor
 from learning_model import HandGestureCorrection
 # Thêm imports cần thiết ở đầu file
 

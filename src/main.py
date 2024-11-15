@@ -1,4 +1,5 @@
 import datetime
+import threading
 import time
 from tkinter import ttk
 import cv2
@@ -195,10 +196,11 @@ app_logo = ImageTk.PhotoImage(app_image)
 logo_label = tk.Label(header_frame, image=app_logo, bg="#4CAF50")
 logo_label.pack(side=tk.LEFT, padx=10)
 
-title_label = tk.Label(header_frame, text="Sign Language Translation & Learning", font=("Arial", 24, "bold"), bg="#4CAF50", fg="#fff")
+title_label = tk.Label(header_frame, text="Sign Language Learning", font=("Arial", 24, "bold"), bg="#4CAF50", fg="#fff")
 title_label.pack(side=tk.LEFT, pady=20, expand=True)
 
 # Add Logout Button in Header
+
 logout_button = HoverButton(
     header_frame,
     text="Logout",
@@ -260,6 +262,126 @@ btn_quiz = HoverButton(
 )
 btn_quiz.pack(pady=15)
 
+def show_system_info():
+    try:
+        # Giả sử gọi API để lấy thông tin hệ thống
+        response = requests.get('http://localhost:3001/api/system-info')
+        if response.status_code == 200:
+            data = response.json()
+
+            # Tạo cửa sổ mới để hiển thị thông tin hệ thống
+            system_window = tk.Toplevel()
+            system_window.title("System Information")
+            system_window.geometry("600x600")
+            system_window.config(bg="#f8f9fa")
+
+            # Tạo khung chứa thông tin hệ thống với hiệu ứng viền
+            system_frame = tk.Frame(system_window, bg="#ffffff", bd=2, relief="groove", padx=20, pady=20)
+            system_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+            # Tiêu đề thông tin hệ thống
+            tk.Label(system_frame, text="System Information", font=("Helvetica", 16, "bold"), bg="#ffffff").pack(pady=10)
+
+            # Hiển thị các thông số hệ thống
+            tk.Label(system_frame, text=f"CPU Frequency (MHz): {data['cpu_frequency_mhz']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"CPU Usage (%): {data['cpu_usage_percent']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"RAM Total (GB): {data['ram_total_gb']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"RAM Used (GB): {data['ram_used_gb']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"RAM Available (GB): {data['ram_available_gb']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+
+            # Thêm khung hiển thị thông tin USB và ping với thiết kế card
+            usb_frame = tk.Frame(system_window, bg="#e9ecef", bd=2, relief="ridge", padx=15, pady=10)
+            usb_frame.pack(pady=10, padx=20, fill="both", expand=True)
+            ping_frame = tk.Frame(system_window, bg="#e9ecef", bd=2, relief="ridge", padx=15, pady=10)
+            ping_frame.pack(pady=10, padx=20, fill="both", expand=True)
+
+            # Label loading
+            loading_label = tk.Label(system_window, text="Loading...", font=("Helvetica", 12, "italic"), fg="blue", bg="#f8f9fa")
+            
+            def fetch_additional_data():
+                loading_label.pack(pady=5)  # Hiển thị trạng thái loading
+
+                def call_api():
+                    try:
+                        # Gọi API /api/usb-devices
+                        usb_response = requests.get('http://localhost:3000/api/usb-devices')
+                        usb_data = usb_response.json()
+
+                        # Xóa các widget cũ trước khi hiển thị dữ liệu mới
+                        for widget in usb_frame.winfo_children():
+                            widget.destroy()
+
+                        tk.Label(usb_frame, text="USB Devices Information", font=("Helvetica", 14, "bold"), bg="#e9ecef").pack(pady=5)
+                        for device in usb_data:
+                            device_info = f"ID: {device['id']}, Tag: {device['tag']}, Device: {device['device']}"
+                            tk.Label(usb_frame, text=device_info, font=("Helvetica", 10), bg="#e9ecef").pack()
+
+                    except Exception as e:
+                        tk.Label(usb_frame, text="Error fetching USB devices information", bg="#e9ecef").pack()
+
+                    try:
+                        # Gọi API /api/ping
+                        ping_response = requests.get('http://localhost:3000/api/ping')
+                        ping_data = ping_response.json()
+
+                        # Xóa các widget cũ trước khi hiển thị dữ liệu mới
+                        for widget in ping_frame.winfo_children():
+                            widget.destroy()
+
+                        tk.Label(ping_frame, text="Ping Information", font=("Helvetica", 14, "bold"), bg="#e9ecef").pack(pady=5)
+                        ping_info = f"Ping to: {ping_data['Ping to']}, Avg Latency: {ping_data['avg_latency']} ms, Min Latency: {ping_data['min_latency']} ms"
+                        tk.Label(ping_frame, text=ping_info, font=("Helvetica", 10), bg="#e9ecef").pack()
+
+                    except Exception as e:
+                        tk.Label(ping_frame, text="Error fetching ping information", bg="#e9ecef").pack()
+
+                    # Ẩn trạng thái loading sau khi tải xong
+                    loading_label.pack_forget()
+
+                # Chạy hàm call_api() trong luồng khác để không làm đơ giao diện
+                threading.Thread(target=call_api).start()
+
+            # Gọi fetch_additional_data() lần đầu để hiển thị thông tin USB và ping
+            fetch_additional_data()
+
+            # Thêm nút refresh với thiết kế đẹp hơn
+            refresh_button = tk.Button(
+                system_window,
+                text="Refresh",
+                font=("Helvetica", 12, "bold"),
+                bg="#007bff",
+                fg="white",
+                relief="raised",
+                borderwidth=3,
+                command=fetch_additional_data,
+                padx=20,
+                pady=10,
+                cursor="hand2"
+            )
+            refresh_button.pack(pady=10)
+
+        else:
+            tk.messagebox.showerror("Error", "Failed to fetch system information.")
+    except requests.exceptions.RequestException as e:
+        tk.messagebox.showerror("Error", "Error connecting to server.")
+
+
+btn_manage_system = HoverButton(
+    button_frame,
+    text="Manage System",
+    font=("Helvetica", 12, "bold"),
+    bg="#007bff",
+    fg="white",
+    relief="flat",
+    command=show_system_info,
+    padx=30,
+    pady=15,
+    width=25,
+    cursor="hand2"
+)
+btn_manage_system.pack(pady=15)
+
+
 # Footer
 footer_frame = tk.Frame(home_frame, bg="#f5f5f5")
 footer_frame.pack(side="bottom", fill="x")
@@ -282,13 +404,13 @@ top_frame = tk.Frame(left_frame, bg="#f5f5f5")
 top_frame.pack(side=tk.TOP, fill="x", padx=10, pady=10)
 
 vid_player = TkinterVideo(left_frame, scaled=True)
-vid_player.pack(expand=True, fill="both", padx=10, pady=10)
+vid_player.pack(expand=True, fill="both", padx=2, pady=2)
 
 video_label = tk.Label(left_frame)
 video_label.pack(expand=True, fill="both", padx=10, pady=10)
 
 text_box = tk.Text(left_frame, height=5, width=80, font=("Arial", 12), fg="#333")
-text_box.pack(pady=10)
+text_box.pack(pady=3)
 
 # Right side - History
 history_frame = tk.Frame(video_container, bg="#f5f5f5", width=300)
@@ -457,6 +579,7 @@ def update_video_frame():
                         )
                         text_box.delete("1.0", "end")
                         text_box.insert("1.0", result_text)
+                        text_box.config(height=3)
                 
                 # Reset cho chu kỳ mới
                 update_video_frame.predictions = []
@@ -744,14 +867,51 @@ def create_word_button_with_practice(parent, word, command):
     return frame
 
 
-record_btn = tk.Button(top_frame, text="Record Video", bg="#4CAF50", font=("Arial", 12, "bold"), fg="#fff", command=record_video)
+record_btn = HoverButton(
+    top_frame,
+    text="Record Video",
+    font=("Arial", 12, "bold"),
+    bg="#4CAF50",
+    fg="#fff",
+    relief="flat",
+    command=record_video,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 record_btn.pack(side=tk.LEFT, padx=5)
 
-stop_btn = tk.Button(top_frame, text="Stop Recording", bg="#FF0000", font=("Arial", 12, "bold"), fg="#fff", command=stop_recording)
+stop_btn = HoverButton(
+    top_frame,
+    text="Stop Recording",
+    font=("Arial", 12, "bold"),
+    bg="#FF0000",
+    fg="#fff",
+    relief="flat",
+    command=stop_recording,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 stop_btn.pack(side=tk.LEFT, padx=5)
 
-back_to_home_btn = tk.Button(video_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
+back_to_home_btn = HoverButton(
+    video_frame,
+    text="Back to Home",
+    font=("Helvetica", 14, "bold"),
+    bg="#FFFFFF",
+    fg="#333",
+    relief="flat",
+    command=show_home_frame,
+    padx=10,
+    pady=5,
+    width=15,
+    cursor="hand2"
+)
 back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
+
 
 # Vocabulary Frame
 vocab_frame = tk.Frame(main_frame, bg="#f5f5f5")
