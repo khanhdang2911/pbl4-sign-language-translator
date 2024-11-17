@@ -28,7 +28,7 @@ root.title("Sign Language Translator & Learning")
 root.geometry("900x750+290+10")
 
 # Set the application icon
-image_icon = PhotoImage(file="../assets/images/logo.png")
+image_icon = PhotoImage(file="/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/logo.png")
 root.iconphoto(False, image_icon)
 
 # Initialize frames
@@ -90,7 +90,7 @@ def show_quiz_frame():
     quiz_instruction_label.config(text="Select the correct word for the video shown:")
     quiz_option_var.set(None)
     
-    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    quiz_vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{random_word}.mp4")
     quiz_vid_player.play()
 
 
@@ -122,7 +122,7 @@ screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
 # Set background image
-bg_image = Image.open("../assets/images/login_background.jpg")
+bg_image = Image.open("/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/login_background.jpg")
 bg_image = bg_image.resize((screen_width, screen_height), Image.LANCZOS)
 bg_photo = ImageTk.PhotoImage(bg_image)
 
@@ -189,7 +189,7 @@ header_frame = tk.Frame(home_frame, bg="#4CAF50")
 header_frame.pack(fill="x")
 
 # Add App Image in Header
-app_image = Image.open("../assets/images/logo.png")
+app_image = Image.open("/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images//logo.png")
 app_image = app_image.resize((100, 100), Image.LANCZOS)
 app_logo = ImageTk.PhotoImage(app_image)
 
@@ -707,7 +707,7 @@ class PracticeWindow:
         
         self.vid_player = TkinterVideo(ref_frame, scaled=True)
         self.vid_player.grid(row=0, column=0, sticky="nsew")
-        self.vid_player.load(f"../assets/videos/{self.word}.mp4")
+        self.vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{self.word}.mp4")
         self.vid_player.play()
         
         # Frame camera practice
@@ -1034,7 +1034,7 @@ words = ["a", "b", "c", "d", "o","u","v","y"] + \
         ["book", "water", "phone", "house", "school", "money", "me"]
 
 def play_vocab_video(word):
-    video_path = f"../assets/videos/{word}.mp4"
+    video_path = f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{word}.mp4"
     if os.path.exists(video_path):
         vid_player_vocab.load(video_path)
         vid_player_vocab.play()
@@ -1110,7 +1110,7 @@ def quiz_random_word():
     start_quiz(random_word)
 
 def start_quiz(random_word):
-    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    quiz_vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{random_word}.mp4")
     quiz_vid_player.play()
 
 # Sử dụng lambda để không gọi hàm ngay lập tức

@@ -30,7 +30,7 @@ root.title("Sign Language Translator & Learning")
 root.geometry("900x750+290+10")
 
 # Set the application icon
-image_icon = PhotoImage(file="../assets/images/logo.png")
+image_icon = PhotoImage(file="/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/logo.png")
 root.iconphoto(False, image_icon)
 
 # Define functions to switch between frames
@@ -71,7 +71,7 @@ def show_quiz_frame():
     quiz_option_var.set(None)
     
     # Load và play video
-    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    quiz_vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{random_word}.mp4")
     quiz_vid_player.play()
 
 
@@ -85,7 +85,7 @@ home_frame.place(relwidth=1, relheight=1)
 
 try:
     # Background Image
-    bg_image = Image.open("../assets/images/background.jpg")
+    bg_image = Image.open("/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/background.jpg")
     bg_image = bg_image.resize((1200, 800), Image.LANCZOS)
     bg_photo = ImageTk.PhotoImage(bg_image)
     
@@ -101,7 +101,7 @@ header_frame.pack(fill="x")
 
 try:
     # Add App Image in Header
-    app_image = Image.open("../assets/images/logo.png")
+    app_image = Image.open("/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/logo.png")
     app_image = app_image.resize((80, 80), Image.LANCZOS)
     app_logo = ImageTk.PhotoImage(app_image)
     
@@ -477,7 +477,7 @@ class PracticeWindow:
         
         self.vid_player = TkinterVideo(ref_frame, scaled=True)
         self.vid_player.grid(row=0, column=0, sticky="nsew")
-        self.vid_player.load(f"../assets/videos/{self.word}.mp4")
+        self.vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{self.word}.mp4")
         self.vid_player.play()
         
         # Frame camera practice
@@ -802,7 +802,7 @@ words = ["goodbye", "thanks", "sorry", "a", "b", "c", "d", "eat", "drink", "hell
 word_buttons = []
 
 def play_vocab_video(word):
-    video_path = f"../assets/videos/{word}.mp4"
+    video_path = f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{word}.mp4"
     # Kiểm tra xem tệp video có tồn tại không
     if os.path.exists(video_path):
         vid_player_vocab.load(video_path)
@@ -893,7 +893,7 @@ def quiz_random_word():
     start_quiz(random_word)
 
 def start_quiz(random_word):
-    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    quiz_vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{random_word}.mp4")
     quiz_vid_player.play()
 
 # Sử dụng lambda để không gọi hàm ngay lập tức
