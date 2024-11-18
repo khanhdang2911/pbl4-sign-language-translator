@@ -1,7 +1,7 @@
 import datetime
 import threading
 import time
-from tkinter import ttk
+from tkinter import messagebox, ttk
 import cv2
 from tkinter import *
 import tkinter as tk
@@ -90,9 +90,28 @@ def show_quiz_frame():
     quiz_instruction_label.config(text="Select the correct word for the video shown:")
     quiz_option_var.set(None)
     
-    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    # Kiểm tra video trong thư mục cục bộ
+    local_video_path = f"../assets/videos/{random_word}.mp4"
+    
+    if os.path.exists(local_video_path):
+        # Nếu có video trong thư mục
+        quiz_vid_player.load(local_video_path)
+    else:
+        # Nếu không có, gọi API để lấy video
+        try:
+            response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={random_word}")
+            data = response.json()
+            
+            if data['success'] and data['videos']:
+                video_url = data['videos'][0]['video']
+                quiz_vid_player.load(video_url)
+            else:
+                # Xử lý trường hợp không tìm thấy video
+                messagebox.showerror("Error", f"No video found for word: {random_word}")
+        except requests.RequestException as e:
+            messagebox.showerror("API Error", f"Failed to fetch video: {str(e)}")
+    
     quiz_vid_player.play()
-
 
 def login():
     global user_id
@@ -257,7 +276,7 @@ btn_quiz = HoverButton(
     command=show_quiz_frame,
     padx=30,
     pady=15,
-    width=25,
+    width=30,
     cursor="hand2"
 )
 btn_quiz.pack(pady=15)
@@ -376,7 +395,7 @@ btn_manage_system = HoverButton(
     command=show_system_info,
     padx=30,
     pady=15,
-    width=25,
+    width=30,
     cursor="hand2"
 )
 btn_manage_system.pack(pady=15)
@@ -707,7 +726,25 @@ class PracticeWindow:
         
         self.vid_player = TkinterVideo(ref_frame, scaled=True)
         self.vid_player.grid(row=0, column=0, sticky="nsew")
-        self.vid_player.load(f"../assets/videos/{self.word}.mp4")
+        local_video_path = f"../assets/videos/{self.word}.mp4"
+        if os.path.exists(local_video_path):
+            # Nếu có video trong thư mục local
+            self.vid_player.load(local_video_path)
+        else:
+            # Nếu không có, gọi API để lấy video
+            try:
+                response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={self.word}")
+                data = response.json()
+                
+                if data['success'] and data['videos']:
+                    video_url = data['videos'][0]['video']
+                    self.vid_player.load(video_url)
+                else:
+                    # Xử lý trường hợp không tìm thấy video
+                    messagebox.showerror("Error", f"No video found for word: {self.word}")
+            except requests.RequestException as e:
+                messagebox.showerror("API Error", f"Failed to fetch video: {str(e)}")
+        
         self.vid_player.play()
         
         # Frame camera practice
@@ -1034,12 +1071,28 @@ words = ["a", "b", "c", "d", "o","u","v","y"] + \
         ["book", "water", "phone", "house", "school", "money", "me"]
 
 def play_vocab_video(word):
-    video_path = f"../assets/videos/{word}.mp4"
-    if os.path.exists(video_path):
-        vid_player_vocab.load(video_path)
-        vid_player_vocab.play()
-    else:
-        print(f"Video for '{word}' not found.")
+    try:
+        video_path = f"../assets/videos/{word}.mp4"  # Sửa đuôi file
+        vid_player_vocab.stop()
+        if os.path.exists(video_path):
+            vid_player_vocab.load(video_path)
+            vid_player_vocab.play()
+        else:
+            try:
+                response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={word}")
+                data = response.json()
+                
+                if data['success'] and data['videos']:
+                    video_url = data['videos'][0]['video']
+                    vid_player_vocab.load(video_url)
+                    vid_player_vocab.play()
+                else:
+                    print(f"No video found for word: {word}")
+            except requests.RequestException as e:
+                print(f"Failed to fetch video: {str(e)}")
+    except Exception as e:
+        print(f"Error playing video: {str(e)}")
+        # Không để chương trình crash
 
 button_width = 12
 for word in words:
@@ -1110,7 +1163,25 @@ def quiz_random_word():
     start_quiz(random_word)
 
 def start_quiz(random_word):
-    quiz_vid_player.load(f"../assets/videos/{random_word}.mp4")
+    video_path = f"../assets/videos/{random_word}.mp4s"
+    
+    if os.path.exists(video_path):
+        quiz_vid_player.load(video_path)
+    else:
+        try:
+            response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={random_word}")
+            data = response.json()
+            
+            if data['success'] and data['videos']:
+                video_url = data['videos'][0]['video']
+                quiz_vid_player.load(video_url)
+            else:
+                print(f"No video found for word: {random_word}")
+                return
+        except requests.RequestException as e:
+            print(f"Failed to fetch video: {str(e)}")
+            return
+    
     quiz_vid_player.play()
 
 # Sử dụng lambda để không gọi hàm ngay lập tức
