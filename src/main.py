@@ -10,7 +10,7 @@ import requests
 from tkVideoPlayer import TkinterVideo
 import os
 import random
-
+import pyttsx3
 from learning_model import HandGestureCorrection
 from hoverbutton import HoverButton
 
@@ -505,18 +505,23 @@ refresh_btn.pack(pady=10)
 recording = False
 API_URL = "http://127.0.0.1:3000/predict/"
 frame_rate = 30  # 30 FPS
+engine = pyttsx3.init()
 
 def update_video_frame():
     global recording, cap, text_box, resultPredict
     
-    # Khởi tạo mảng dự đoán cho mỗi giây
+    # Khởi tạo mảng dự đoán và biến đếm khung hình
     if not hasattr(update_video_frame, 'predictions'):
         update_video_frame.predictions = []
-        update_video_frame.last_time = time.time()
+        update_video_frame.last_time = time.perf_counter()
+        update_video_frame.frame_count = 0
     
     if recording:
         ret, frame = cap.read()
         if ret:
+            # Resize frame để giảm tải
+            frame = cv2.resize(frame, (640, 480))
+            
             # Hiển thị frame
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame_rgb)
@@ -524,43 +529,51 @@ def update_video_frame():
             video_label.imgtk = imgtk
             video_label.configure(image=imgtk)
             
-            current_time = time.time()
+            current_time = time.perf_counter()
             
-            # Thực hiện dự đoán với API
-            try:
-                # Chuyển đổi frame thành bytes
-                _, img_encoded = cv2.imencode('.jpg', frame)
-                files = {'file': ('image.jpg', img_encoded.tobytes(), 'image/jpeg')}
+            # Tăng biến đếm khung hình
+            update_video_frame.frame_count += 1
+            
+            # Chỉ gọi API sau mỗi 10 khung hình (thay vì 5)
+            if update_video_frame.frame_count % 5 == 0:
+                def async_prediction(frame):
+                    try:
+                        # Chuyển đổi frame thành bytes
+                        _, img_encoded = cv2.imencode('.jpg', frame)
+                        files = {'file': ('image.jpg', img_encoded.tobytes(), 'image/jpeg')}
+                        
+                        # Gọi API
+                        response = requests.post(API_URL, files=files, timeout=3)
+                        
+                        if response.status_code == 200:
+                            prediction_data = response.json()
+                            prediction = prediction_data['prediction']
+                            confidence = prediction_data['confidence']
+                            
+                            # Thêm vào danh sách dự đoán
+                            update_video_frame.predictions.append(prediction)
+                            
+                            # Hiển thị kết quả trực tiếp trên frame
+                            text = f"Prediction: {prediction}, Confidence: {confidence:.2f}"
+                            frame_with_text = frame.copy()
+                            cv2.putText(frame_with_text, text, (10, 30), 
+                                      cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
+                            
+                            # Cập nhật hiển thị frame với text (chạy trên luồng chính)
+                            frame_rgb = cv2.cvtColor(frame_with_text, cv2.COLOR_BGR2RGB)
+                            img = Image.fromarray(frame_rgb)
+                            imgtk = ImageTk.PhotoImage(image=img)
+                            video_label.imgtk = imgtk
+                            video_label.configure(image=imgtk)
+                        
+                        else:
+                            print(f"API error: Status code {response.status_code}, {response.text}")
+                            
+                    except Exception as e:
+                        print(f"API call error: {e}")
                 
-                # Gọi API
-                response = requests.post(API_URL, files=files)
-                
-                if response.status_code == 200:
-                    prediction_data = response.json()
-                    prediction = prediction_data['prediction']
-                    confidence = prediction_data['confidence']
-                    
-                    # Thêm vào danh sách dự đoán
-                    update_video_frame.predictions.append(prediction)
-                    
-                    # Hiển thị kết quả trực tiếp trên frame
-                    text = f"Prediction: {prediction}, Confidence: {confidence:.2f}"
-                    frame_with_text = frame.copy()
-                    cv2.putText(frame_with_text, text, (10, 30), 
-                              cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
-                    
-                    # Cập nhật hiển thị frame với text
-                    frame_rgb = cv2.cvtColor(frame_with_text, cv2.COLOR_BGR2RGB)
-                    img = Image.fromarray(frame_rgb)
-                    imgtk = ImageTk.PhotoImage(image=img)
-                    video_label.imgtk = imgtk
-                    video_label.configure(image=imgtk)
-                    
-                else:
-                    print(f"API error: Status code {response.status_code}, {response.text}")
-                    
-            except Exception as e:
-                print(f"API call error: {e}")
+                # Chạy API trong luồng riêng
+                threading.Thread(target=async_prediction, args=(frame,)).start()
             
             # Mỗi 1 giây, phân tích kết quả tổng hợp
             if current_time - update_video_frame.last_time >= 1.0:
@@ -599,14 +612,17 @@ def update_video_frame():
                         text_box.delete("1.0", "end")
                         text_box.insert("1.0", result_text)
                         text_box.config(height=3)
+                        
+                        # Đọc kết quả bằng pyttsx3
+                        engine.say(f"{max_word}")
+                        engine.runAndWait()
                 
                 # Reset cho chu kỳ mới
                 update_video_frame.predictions = []
                 update_video_frame.last_time = current_time
             
-            # Delay 30ms (tương đương với frame rate 30 FPS)
-            video_label.after(30, update_video_frame)
-
+            # Delay 33ms (gần 30 FPS nhưng linh hoạt hơn)
+            video_label.after(33, update_video_frame)
 
 def record_video():
     global cap, recording, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
@@ -669,6 +685,7 @@ def stop_recording():
                     
                     text_box.delete("1.0", "end")
                     text_box.insert("1.0", text_output)
+                    
                 else:
                     text_box.delete("1.0", "end")
                     text_box.insert("1.0", "Error in sentence correction.")
@@ -687,6 +704,10 @@ def stop_recording():
         text_box.delete("1.0", "end")
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
     back_to_home_btn.config(state=tk.NORMAL)  # This enables the button again after recording
+    # Phát âm kết quả
+    if api_response.get('message'):
+        engine.say(api_response.get('message'))
+        engine.runAndWait()
 
 class PracticeWindow:
     def __init__(self, word):

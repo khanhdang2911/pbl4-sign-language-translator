@@ -1,19 +1,20 @@
+import datetime
+import json
+import threading
 import time
-from tkinter import ttk
+from tkinter import messagebox, ttk
 import cv2
 from tkinter import *
 import tkinter as tk
 from PIL import Image, ImageTk
-import numpy as np
 import requests
 from tkVideoPlayer import TkinterVideo
-from tkinter import filedialog
-import os  # them thu vien os de check file ton tai
-import random #random quiz
+import os
+import random
+import pyttsx3
 from learning_model import HandGestureCorrection
-# Thêm imports cần thiết ở đầu file
+from hoverbutton import HoverButton
 
-# Khởi tạo predictor
 correction = HandGestureCorrection()
 predictions_array = []  # Mảng lưu các dự đoán
 last_update_time = time.time()  # Thời điểm cập nhật cuối
@@ -21,8 +22,6 @@ last_hand_positions = None  # Vị trí tay ở frame trước
 PREDICTION_THRESHOLD = 0.6  # Ngưỡng tin cậy (60%)
 MOVEMENT_THRESHOLD = 0.1  # Ngưỡng thay đổi vị trí tay (10%)
 last_prediction_time = time.time()  # Thời điểm dự đoán cuối
-
-
 
 # Create the main window
 root = tk.Tk()
@@ -33,115 +32,211 @@ root.geometry("900x750+290+10")
 image_icon = PhotoImage(file="/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/logo.png")
 root.iconphoto(False, image_icon)
 
-# Define functions to switch between frames
+# Initialize frames
+main_frame = tk.Frame(root)
+login_frame = tk.Frame(root, bg="#f5f5f5")
+def logout():
+    # Reset any necessary variables or states here
+    username_entry.delete(0, 'end')
+    password_entry.delete(0, 'end')
+    error_label.config(text="")
+    
+    # Hide main frame and show login frame
+    main_frame.pack_forget()
+    login_frame.pack(fill='both', expand=True)
+    login_frame.tkraise()
+
 def show_home_frame():
-    home_frame.tkraise()
+    home_frame.pack(fill='both', expand=True)
+    video_frame.pack_forget()
+    vocab_frame.pack_forget()
+    quiz_frame.pack_forget()
 
 def show_video_frame():
-    video_frame.tkraise()
+    home_frame.pack_forget()
+    video_frame.pack(fill='both', expand=True)
+    vocab_frame.pack_forget()
+    quiz_frame.pack_forget()
 
 def show_vocab_frame():
-    vocab_frame.tkraise()
+    home_frame.pack_forget()
+    video_frame.pack_forget()
+    vocab_frame.pack(fill='both', expand=True)
+    quiz_frame.pack_forget()
 
 def show_quiz_frame():
-    quiz_frame.tkraise()
+    home_frame.pack_forget()
+    video_frame.pack_forget()
+    vocab_frame.pack_forget()
+    quiz_frame.pack(fill='both', expand=True)
     
     # Chọn từ đúng
     global random_word
     random_word = random.choice(words)
     
-    # Tạo danh sách các từ sai (không bao gồm từ đúng)
+    # Tạo danh sách các từ sai
     wrong_words = [word for word in words if word != random_word]
-    # Chọn ngẫu nhiên 3 từ sai
     incorrect_words = random.sample(wrong_words, 3)
     
-    # Tạo list chứa cả 4 từ (1 đúng + 3 sai)
+    # Tạo list chứa cả 4 từ và xáo trộn
     all_options = [random_word] + incorrect_words
-    # Xáo trộn vị trí các từ
     random.shuffle(all_options)
     
-    # Cập nhật text và value cho 4 radio buttons
+    # Cập nhật radio buttons
     quiz_option_1.config(text=all_options[0], value=all_options[0])
     quiz_option_2.config(text=all_options[1], value=all_options[1])
     quiz_option_3.config(text=all_options[2], value=all_options[2])
     quiz_option_4.config(text=all_options[3], value=all_options[3])
     
-    # Reset instruction text và radio button selection
     quiz_instruction_label.config(text="Select the correct word for the video shown:")
     quiz_option_var.set(None)
     
-    # Load và play video
-    quiz_vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{random_word}.mp4")
+    # Kiểm tra video trong thư mục cục bộ
+    local_video_path = f"../assets/videos/{random_word}.mp4"
+    
+    if os.path.exists(local_video_path):
+        # Nếu có video trong thư mục
+        quiz_vid_player.load(local_video_path)
+    else:
+        # Nếu không có, gọi API để lấy video
+        try:
+            response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={random_word}")
+            data = response.json()
+            
+            if data['success'] and data['videos']:
+                video_url = data['videos'][0]['video']
+                quiz_vid_player.load(video_url)
+            else:
+                # Xử lý trường hợp không tìm thấy video
+                messagebox.showerror("Error", f"No video found for word: {random_word}")
+        except requests.RequestException as e:
+            messagebox.showerror("API Error", f"Failed to fetch video: {str(e)}")
+    
     quiz_vid_player.play()
 
-
-# Main frame
-main_frame = tk.Frame(root, bg="#f0f2f5")
-main_frame.pack(fill="both", expand=True)
-
-# Home Frame
-home_frame = tk.Frame(main_frame, bg="white")
-home_frame.place(relwidth=1, relheight=1)
-
-try:
-    # Background Image
-    bg_image = Image.open("/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/background.jpg")
-    bg_image = bg_image.resize((1200, 800), Image.LANCZOS)
-    bg_photo = ImageTk.PhotoImage(bg_image)
+def login():
+    global user_id
+    username = username_entry.get()
+    password = password_entry.get()
     
-    bg_label = tk.Label(home_frame, image=bg_photo)
-    bg_label.image = bg_photo
-    bg_label.place(relwidth=1, relheight=1)
-except:
-    print("Không tìm thấy ảnh nền")
+    try:
+        response = requests.post('http://localhost:8081/user/login', data={'username': username, 'password': password})
+        if response.status_code == 200:
+            data = response.json()
+            user_id = data.get('user', {}).get('id')
+            
+            if data.get('success'):
+                login_frame.pack_forget()  # Hide login frame
+                main_frame.pack(fill='both', expand=True)  # Show main frame
+                show_home_frame()  # Show home frame with features
+            else:
+                error_label.config(text=data.get('message', "Invalid username or password"), fg="red")
+        else:
+            error_label.config(text="Error logging in. Please try again.", fg="red")
+    except requests.exceptions.RequestException as e:
+        error_label.config(text="Error connecting to server. Please check your internet connection.", fg="red")
+
+
+# Login Frame
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+# Set background image
+bg_image = Image.open("../assets/images/login_background.jpg")
+bg_image = bg_image.resize((screen_width, screen_height), Image.LANCZOS)
+bg_photo = ImageTk.PhotoImage(bg_image)
+
+bg_label = tk.Label(login_frame, image=bg_photo)
+bg_label.place(relwidth=1, relheight=1)
+
+# Add a centered container for the login elements
+login_container = tk.Frame(login_frame, bg="#ffffff", padx=100, pady=50, borderwidth=1, relief="solid")
+login_container.place(relx=0.5, rely=0.5, anchor="center")
+
+# Login label
+login_label = tk.Label(login_container, text="Login", font=("Arial", 20, "bold"), bg="#ffffff", fg="#333333")
+login_label.pack(pady=10)
+
+# Username label and entry
+username_frame = tk.Frame(login_container, bg="#ffffff")
+username_frame.pack(fill="x", pady=5)
+
+username_label = tk.Label(username_frame, text="Username:", bg="#ffffff", fg="#666666")
+username_label.pack(side=tk.LEFT, padx=(0,10))
+
+username_entry = tk.Entry(username_frame, bg="#f5f5f5", fg="#333333", highlightcolor="#4CAF50", highlightthickness=2)
+username_entry.pack(side=tk.LEFT, expand=True, fill="x")
+
+# Password label and entry 
+password_frame = tk.Frame(login_container, bg="#ffffff")
+password_frame.pack(fill="x", pady=5)
+
+password_label = tk.Label(password_frame, text="Password: ", bg="#ffffff", fg="#666666")
+password_label.pack(side=tk.LEFT, padx=(0,10))
+
+password_entry = tk.Entry(password_frame, show="*", bg="#f5f5f5", fg="#333333", highlightcolor="#4CAF50", highlightthickness=2)
+password_entry.pack(side=tk.LEFT, expand=True, fill="x")
+
+# Login button
+login_button = HoverButton(
+    login_container,
+    text="Login",
+    font=("Arial", 14, "bold"),
+    bg="#4CAF50",
+    fg="#ffffff",
+    relief="flat",
+    cursor="hand2",
+    command=login
+)
+login_button.pack(pady=15)
+
+
+# Error message label
+error_label = tk.Label(login_container, bg="#ffffff", fg="#ff0000")
+error_label.pack(pady=5)
+
+# Add the login frame to the main window
+login_frame.pack(fill='both', expand=True)
+
+
+
+# Create all other frames
+# Home Frame
+home_frame = tk.Frame(main_frame, bg="#FFFFFF")
 
 # Header Section
-header_frame = tk.Frame(home_frame, bg="#1877f2")
+header_frame = tk.Frame(home_frame, bg="#4CAF50")
 header_frame.pack(fill="x")
 
-try:
-    # Add App Image in Header
-    app_image = Image.open("/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/images/logo.png")
-    app_image = app_image.resize((80, 80), Image.LANCZOS)
-    app_logo = ImageTk.PhotoImage(app_image)
-    
-    logo_label = tk.Label(header_frame, image=app_logo, bg="#1877f2")
-    logo_label.pack(side=tk.LEFT, padx=20, pady=10)
-    logo_label.image = app_logo
-except:
-    print("Không tìm thấy logo")
+# Add App Image in Header
+app_image = Image.open("../assets/images/logo.png")
+app_image = app_image.resize((100, 100), Image.LANCZOS)
+app_logo = ImageTk.PhotoImage(app_image)
 
-title_label = tk.Label(
-    header_frame, 
-    text="Sign Language Translation & Learning", 
-    font=("Helvetica", 24, "bold"), 
-    bg="#1877f2", 
-    fg="white"
+logo_label = tk.Label(header_frame, image=app_logo, bg="#4CAF50")
+logo_label.pack(side=tk.LEFT, padx=10)
+
+title_label = tk.Label(header_frame, text="Sign Language Learning", font=("Arial", 24, "bold"), bg="#4CAF50", fg="#fff")
+title_label.pack(side=tk.LEFT, pady=20, expand=True)
+
+# Add Logout Button in Header
+
+logout_button = HoverButton(
+    header_frame,
+    text="Logout",
+    font=("Arial", 14, "bold"),
+    bg="#f02849",
+    fg="white",
+    relief="flat",
+    cursor="hand2",
+    command=logout
 )
-title_label.pack(pady=20)
+logout_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
 # Button Section
-button_frame = tk.Frame(home_frame, bg="white")
-button_frame.pack(pady=40)
+button_frame = tk.Frame(home_frame, bg="#FFFFFF")
+button_frame.pack(pady=30)
 
-# Custom style cho buttons
-class HoverButton(tk.Button):
-    def __init__(self, master, **kw):
-        tk.Button.__init__(self, master=master, **kw)
-        self.defaultBackground = self["background"]
-        self.bind("<Enter>", self.on_enter)
-        self.bind("<Leave>", self.on_leave)
-
-    def on_enter(self, e):
-        color = self["background"]
-        rgb = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
-        darker = tuple(max(0, c - 30) for c in rgb)
-        self["background"] = f"#{darker[0]:02x}{darker[1]:02x}{darker[2]:02x}"
-
-    def on_leave(self, e):
-        self["background"] = self.defaultBackground
-
-# Buttons with rounded corners and hover effect
 btn1 = HoverButton(
     button_frame,
     text="Translate Sign Language",
@@ -175,101 +270,259 @@ btn2.pack(pady=15)
 btn_quiz = HoverButton(
     button_frame,
     text="Vocabulary Quiz",
-    font=("Helvetica", 14, "bold"),
+    font=("Helvetica", 12, "bold"),
     bg="#f02849",
     fg="white",
     relief="flat",
     command=show_quiz_frame,
     padx=30,
     pady=15,
-    width=25,
+    width=30,
     cursor="hand2"
 )
 btn_quiz.pack(pady=15)
 
-# Footer
-footer_frame = tk.Frame(home_frame, bg="#f0f2f5")
-footer_frame.pack(side="bottom", fill="x")
+def show_system_info():
+    try:
+        # Giả sử gọi API để lấy thông tin hệ thống
+        response = requests.get('http://localhost:3001/api/system-info')
+        if response.status_code == 200:
+            data = response.json()
 
-footer_label = tk.Label(
-    footer_frame,
-    text="© 2024 Sign Language Learning App. All Rights Reserved.",
-    font=("Helvetica", 10),
-    bg="#f0f2f5",
-    fg="#65676b"
-)
-footer_label.pack(pady=15)
+            # Tạo cửa sổ mới để hiển thị thông tin hệ thống
+            system_window = tk.Toplevel()
+            system_window.title("System Information")
+            system_window.geometry("600x600")
+            system_window.config(bg="#f8f9fa")
 
-# Video Frame - giữ nguyên logic gốc
-video_frame = tk.Frame(main_frame, bg="#f0f2f5")
-video_frame.place(relwidth=1, relheight=1)
+            # Tạo khung chứa thông tin hệ thống với hiệu ứng viền
+            system_frame = tk.Frame(system_window, bg="#ffffff", bd=2, relief="groove", padx=20, pady=20)
+            system_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-top_frame = tk.Frame(video_frame, bg="#f0f2f5")
-top_frame.pack(side=tk.TOP, fill="x", padx=20, pady=20)
+            # Tiêu đề thông tin hệ thống
+            tk.Label(system_frame, text="System Information", font=("Helvetica", 16, "bold"), bg="#ffffff").pack(pady=10)
 
-lower_frame = tk.Frame(video_frame, bg="white")
-lower_frame.pack(fill="both", side=BOTTOM)
+            # Hiển thị các thông số hệ thống
+            tk.Label(system_frame, text=f"CPU Frequency (MHz): {data['cpu_frequency_mhz']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"CPU Usage (%): {data['cpu_usage_percent']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"RAM Total (GB): {data['ram_total_gb']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"RAM Used (GB): {data['ram_used_gb']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
+            tk.Label(system_frame, text=f"RAM Available (GB): {data['ram_available_gb']}", font=("Helvetica", 12), bg="#ffffff").pack(pady=5)
 
-# Video player với style mới nhưng giữ nguyên logic
-vid_player = TkinterVideo(video_frame, scaled=True)
-vid_player.pack(expand=True, fill="both", padx=2, pady=2)
+            # Thêm khung hiển thị thông tin USB và ping với thiết kế card
+            usb_frame = tk.Frame(system_window, bg="#e9ecef", bd=2, relief="ridge", padx=15, pady=10)
+            usb_frame.pack(pady=10, padx=20, fill="both", expand=True)
+            ping_frame = tk.Frame(system_window, bg="#e9ecef", bd=2, relief="ridge", padx=15, pady=10)
+            ping_frame.pack(pady=10, padx=20, fill="both", expand=True)
 
-text_box = tk.Text(
-    video_frame,
-    height=5,
-    width=80,
-    font=("Helvetica", 14),
-    fg="#050505",
-    bg="white",
+            # Label loading
+            loading_label = tk.Label(system_window, text="Loading...", font=("Helvetica", 12, "italic"), fg="blue", bg="#f8f9fa")
+            
+            def fetch_additional_data():
+                loading_label.pack(pady=5)  # Hiển thị trạng thái loading
+
+                def call_api():
+                    try:
+                        # Gọi API /api/usb-devices
+                        usb_response = requests.get('http://localhost:3000/api/usb-devices')
+                        usb_data = usb_response.json()
+
+                        # Xóa các widget cũ trước khi hiển thị dữ liệu mới
+                        for widget in usb_frame.winfo_children():
+                            widget.destroy()
+
+                        tk.Label(usb_frame, text="USB Devices Information", font=("Helvetica", 14, "bold"), bg="#e9ecef").pack(pady=5)
+                        for device in usb_data:
+                            device_info = f"ID: {device['id']}, Tag: {device['tag']}, Device: {device['device']}"
+                            tk.Label(usb_frame, text=device_info, font=("Helvetica", 10), bg="#e9ecef").pack()
+
+                    except Exception as e:
+                        tk.Label(usb_frame, text="Error fetching USB devices information", bg="#e9ecef").pack()
+
+                    try:
+                        # Gọi API /api/ping
+                        ping_response = requests.get('http://localhost:3000/api/ping')
+                        ping_data = ping_response.json()
+
+                        # Xóa các widget cũ trước khi hiển thị dữ liệu mới
+                        for widget in ping_frame.winfo_children():
+                            widget.destroy()
+
+                        tk.Label(ping_frame, text="Ping Information", font=("Helvetica", 14, "bold"), bg="#e9ecef").pack(pady=5)
+                        ping_info = f"Ping to: {ping_data['Ping to']}, Avg Latency: {ping_data['avg_latency']} ms, Min Latency: {ping_data['min_latency']} ms"
+                        tk.Label(ping_frame, text=ping_info, font=("Helvetica", 10), bg="#e9ecef").pack()
+
+                    except Exception as e:
+                        tk.Label(ping_frame, text="Error fetching ping information", bg="#e9ecef").pack()
+
+                    # Ẩn trạng thái loading sau khi tải xong
+                    loading_label.pack_forget()
+
+                # Chạy hàm call_api() trong luồng khác để không làm đơ giao diện
+                threading.Thread(target=call_api).start()
+
+            # Gọi fetch_additional_data() lần đầu để hiển thị thông tin USB và ping
+            fetch_additional_data()
+
+            # Thêm nút refresh với thiết kế đẹp hơn
+            refresh_button = tk.Button(
+                system_window,
+                text="Refresh",
+                font=("Helvetica", 12, "bold"),
+                bg="#007bff",
+                fg="white",
+                relief="raised",
+                borderwidth=3,
+                command=fetch_additional_data,
+                padx=20,
+                pady=10,
+                cursor="hand2"
+            )
+            refresh_button.pack(pady=10)
+
+        else:
+            tk.messagebox.showerror("Error", "Failed to fetch system information.")
+    except requests.exceptions.RequestException as e:
+        tk.messagebox.showerror("Error", "Error connecting to server.")
+
+
+btn_manage_system = HoverButton(
+    button_frame,
+    text="Manage System",
+    font=("Helvetica", 12, "bold"),
+    bg="#007bff",
+    fg="white",
     relief="flat",
-    padx=15,
-    pady=15
-)
-text_box.pack(pady=2, padx=2, fill="x")
-text_box.insert("1.0", "This is a text box to display text below the video.")
-text_box.config(height=3)  # Giảm chiều cao của text box
-# Thêm nút Back to Home
-back_to_home_btn = HoverButton(
-    video_frame,
-    text="Back to Home",
-    font=("Helvetica", 14, "bold"),
-    bg="#FFFFFF",
-    fg="#333",
-    relief="flat",
-    command=show_home_frame,
-    padx=10,
-    pady=5,
-    width=15,
+    command=show_system_info,
+    padx=30,
+    pady=15,
+    width=30,
     cursor="hand2"
 )
-# Giữ nguyên video_label theo yêu cầu
-video_label = tk.Label(vid_player)
-video_label.pack()
+btn_manage_system.pack(pady=15)
 
-# Logo reference
-logo_label.image = app_logo
 
-# Prevent frame resizing
-home_frame.pack_propagate(False)
+# Footer
+footer_frame = tk.Frame(home_frame, bg="#f5f5f5")
+footer_frame.pack(side="bottom", fill="x")
 
+footer_label = tk.Label(footer_frame, text="© 2024 Sign Language Learning App. All Rights Reserved.", font=("Arial", 10), bg="#f5f5f5", fg="#333")
+footer_label.pack(pady=10)
+
+# Video Frame
+video_frame = tk.Frame(main_frame, bg="#f5f5f5")
+
+# Create a container frame for video and history
+video_container = tk.Frame(video_frame, bg="#f5f5f5")
+video_container.pack(fill="both", expand=True)
+
+# Left side - Video recording
+left_frame = tk.Frame(video_container, bg="#f5f5f5")
+left_frame.pack(side=tk.LEFT, fill="both", expand=True, padx=10)
+
+top_frame = tk.Frame(left_frame, bg="#f5f5f5")
+top_frame.pack(side=tk.TOP, fill="x", padx=10, pady=10)
+
+vid_player = TkinterVideo(left_frame, scaled=True)
+vid_player.pack(expand=True, fill="both", padx=2, pady=2)
+
+video_label = tk.Label(left_frame)
+video_label.pack(expand=True, fill="both", padx=10, pady=10)
+
+text_box = tk.Text(left_frame, height=5, width=80, font=("Arial", 12), fg="#333")
+text_box.pack(pady=3)
+
+# Right side - History
+history_frame = tk.Frame(video_container, bg="#f5f5f5", width=300)
+history_frame.pack(side=tk.RIGHT, fill="y", padx=10, pady=10)
+history_frame.pack_propagate(False)  # Prevent frame from shrinking
+
+# History header
+history_label = tk.Label(
+    history_frame,
+    text="Recording History",
+    font=("Arial", 14, "bold"),
+    bg="#f5f5f5",
+    fg="#333"
+)
+history_label.pack(pady=(0, 10))
+
+# Create Treeview for history
+history_tree = ttk.Treeview(
+    history_frame,
+    columns=("date", "text"),
+    show="headings",
+    height=15
+)
+
+# Configure columns
+history_tree.heading("date", text="Date")
+history_tree.heading("text", text="Translation")
+history_tree.column("date", width=100)
+history_tree.column("text", width=180)
+
+# Add scrollbar
+scrollbar = ttk.Scrollbar(history_frame, orient="vertical", command=history_tree.yview)
+scrollbar.pack(side="right", fill="y")
+history_tree.configure(yscrollcommand=scrollbar.set)
+history_tree.pack(fill="both", expand=True)
+
+def fetch_history():
+    try:
+          # Remplacez par l'ID de l'utilisateur connecté
+        response = requests.get(f'http://localhost:8081/home/get-history-by-id/{user_id}')
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                history_data = data.get('history', [])
+                
+                # Clear existing items
+                for item in history_tree.get_children():
+                    history_tree.delete(item)
+                
+                # Add new items
+                for record in history_data:
+                    date = datetime.datetime.strptime(record.get('date_insert'), '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d %H:%M')
+                    text = record.get('text_voice', '')
+                    history_tree.insert('', 'end', values=(date, text))
+            else:
+                error_label.config(text="Could not fetch history.", fg="red")
+        else:
+            error_label.config(text="Could not fetch history. Please check if the server is running.", fg="red")
+    except requests.exceptions.RequestException as e:
+        error_label.config(text="Could not fetch history. Please check your internet connection.", fg="red")
+
+# Add refresh button
+refresh_btn = tk.Button(
+    history_frame,
+    text="Refresh History",
+    bg="#4CAF50",
+    fg="white",
+    font=("Arial", 10),
+    command=fetch_history
+)
+refresh_btn.pack(pady=10)
 
 recording = False
-
-
 API_URL = "http://127.0.0.1:3000/predict/"
 frame_rate = 30  # 30 FPS
+engine = pyttsx3.init()
 
 def update_video_frame():
     global recording, cap, text_box, resultPredict
     
-    # Khởi tạo mảng dự đoán cho mỗi giây
+    # Khởi tạo mảng dự đoán và biến đếm khung hình
     if not hasattr(update_video_frame, 'predictions'):
         update_video_frame.predictions = []
-        update_video_frame.last_time = time.time()
+        update_video_frame.last_time = time.perf_counter()
+        update_video_frame.frame_count = 0
     
     if recording:
         ret, frame = cap.read()
         if ret:
+            # Resize frame để giảm tải
+            frame = cv2.resize(frame, (640, 480))
+            
             # Hiển thị frame
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame_rgb)
@@ -277,43 +530,51 @@ def update_video_frame():
             video_label.imgtk = imgtk
             video_label.configure(image=imgtk)
             
-            current_time = time.time()
+            current_time = time.perf_counter()
             
-            # Thực hiện dự đoán với API
-            try:
-                # Chuyển đổi frame thành bytes
-                _, img_encoded = cv2.imencode('.jpg', frame)
-                files = {'file': ('image.jpg', img_encoded.tobytes(), 'image/jpeg')}
+            # Tăng biến đếm khung hình
+            update_video_frame.frame_count += 1
+            
+            # Chỉ gọi API sau mỗi 10 khung hình (thay vì 5)
+            if update_video_frame.frame_count % 5 == 0:
+                def async_prediction(frame):
+                    try:
+                        # Chuyển đổi frame thành bytes
+                        _, img_encoded = cv2.imencode('.jpg', frame)
+                        files = {'file': ('image.jpg', img_encoded.tobytes(), 'image/jpeg')}
+                        
+                        # Gọi API
+                        response = requests.post(API_URL, files=files, timeout=3)
+                        
+                        if response.status_code == 200:
+                            prediction_data = response.json()
+                            prediction = prediction_data['prediction']
+                            confidence = prediction_data['confidence']
+                            
+                            # Thêm vào danh sách dự đoán
+                            update_video_frame.predictions.append(prediction)
+                            
+                            # Hiển thị kết quả trực tiếp trên frame
+                            text = f"Prediction: {prediction}, Confidence: {confidence:.2f}"
+                            frame_with_text = frame.copy()
+                            cv2.putText(frame_with_text, text, (10, 30), 
+                                      cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
+                            
+                            # Cập nhật hiển thị frame với text (chạy trên luồng chính)
+                            frame_rgb = cv2.cvtColor(frame_with_text, cv2.COLOR_BGR2RGB)
+                            img = Image.fromarray(frame_rgb)
+                            imgtk = ImageTk.PhotoImage(image=img)
+                            video_label.imgtk = imgtk
+                            video_label.configure(image=imgtk)
+                        
+                        else:
+                            print(f"API error: Status code {response.status_code}, {response.text}")
+                            
+                    except Exception as e:
+                        print(f"API call error: {e}")
                 
-                # Gọi API
-                response = requests.post(API_URL, files=files)
-                
-                if response.status_code == 200:
-                    prediction_data = response.json()
-                    prediction = prediction_data['prediction']
-                    confidence = prediction_data['confidence']
-                    
-                    # Thêm vào danh sách dự đoán
-                    update_video_frame.predictions.append(prediction)
-                    
-                    # Hiển thị kết quả trực tiếp trên frame
-                    text = f"Prediction: {prediction}, Confidence: {confidence:.2f}"
-                    frame_with_text = frame.copy()
-                    cv2.putText(frame_with_text, text, (10, 30), 
-                              cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
-                    
-                    # Cập nhật hiển thị frame với text
-                    frame_rgb = cv2.cvtColor(frame_with_text, cv2.COLOR_BGR2RGB)
-                    img = Image.fromarray(frame_rgb)
-                    imgtk = ImageTk.PhotoImage(image=img)
-                    video_label.imgtk = imgtk
-                    video_label.configure(image=imgtk)
-                    
-                else:
-                    print(f"API error: Status code {response.status_code}, {response.text}")
-                    
-            except Exception as e:
-                print(f"API call error: {e}")
+                # Chạy API trong luồng riêng
+                threading.Thread(target=async_prediction, args=(frame,)).start()
             
             # Mỗi 1 giây, phân tích kết quả tổng hợp
             if current_time - update_video_frame.last_time >= 1.0:
@@ -351,14 +612,18 @@ def update_video_frame():
                         )
                         text_box.delete("1.0", "end")
                         text_box.insert("1.0", result_text)
+                        text_box.config(height=3)
+                        
+                        # Đọc kết quả bằng pyttsx3
+                        engine.say(f"{max_word}")
+                        engine.runAndWait()
                 
                 # Reset cho chu kỳ mới
                 update_video_frame.predictions = []
                 update_video_frame.last_time = current_time
             
-            # Delay 30ms (tương đương với frame rate 30 FPS)
-            video_label.after(30, update_video_frame)
-
+            # Delay 33ms (gần 30 FPS nhưng linh hoạt hơn)
+            video_label.after(33, update_video_frame)
 
 def record_video():
     global cap, recording, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
@@ -395,34 +660,50 @@ def stop_recording():
                 predicted_words.append(current_word)  # Thêm từ vào mảng để gửi lên API
                 last_word = current_word
         
-        # Gọi API để sửa ngữ nghĩa
+        # Gọi API Ollama để sửa ngữ nghĩa
         try:
-            # Chuẩn bị data để gửi lên API
+            # Chuẩn bị data để gửi lên API Ollama
             api_data = {
-                "text_voice": predicted_words
+                "model": "llama2", 
+                "prompt": f"You are a sign language recognition model. Convert the input (keywords, signs, or phrases) into a complete, grammatically correct sentence. Return only the sentence in JSON format. format: {{\"results\": \"\"}} input : {{{', '.join(f'\"{word}\"' for word in predicted_words)}}}", 
+                "format": "json", 
+                "stream": False
             }
             
-            # Gọi API
-            response = requests.post('http://localhost:8081/home/create-text-voice', json=api_data)
+            # Gọi API Ollama
+            response = requests.post('http://localhost:11434/api/generate', json=api_data)
             
             if response.status_code == 200:
                 # Parse JSON response
                 api_response = response.json()
                 
-                if api_response.get('success'):
-                    # Hiển thị cả kết quả dự đoán và câu đã sửa
+                # Parse kết quả từ trường response
+                try:
+                    parsed_result = json.loads(api_response['response'])
+                    corrected_sentence = parsed_result.get('results', 'No sentence generated')
+                    
+                    # Hiển thị kết quả dự đoán và câu đã sửa
                     text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
                     for result in filtered_results:
                         text_output += f"Word: {result['word']}, Confidence: {result['confidence']*100:.2f}%\n"
                     
-                    text_output += f"\nCorrected sentence:\n{api_response['message']}"
+                    text_output += f"\nCorrected sentence:\n{corrected_sentence}"
                     
                     text_box.delete("1.0", "end")
                     text_box.insert("1.0", text_output)
-                else:
-                    text_box.delete("1.0", "end")
-                    text_box.insert("1.0", "Error in sentence correction.")
                     
+                    # Phát âm kết quả
+                    engine.say(corrected_sentence)
+                    engine.runAndWait()
+                    
+                except (json.JSONDecodeError, KeyError):
+                    text_box.delete("1.0", "end")
+                    text_box.insert("1.0", "Error parsing API response.")
+                    
+            else:
+                text_box.delete("1.0", "end")
+                text_box.insert("1.0", f"API error: {response.status_code}")
+                
         except requests.exceptions.RequestException as e:
             # Xử lý lỗi khi gọi API
             text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
@@ -436,9 +717,8 @@ def stop_recording():
     else:
         text_box.delete("1.0", "end")
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
+    
     back_to_home_btn.config(state=tk.NORMAL)  # This enables the button again after recording
-
-
 class PracticeWindow:
     def __init__(self, word):
         self.word = word
@@ -477,7 +757,25 @@ class PracticeWindow:
         
         self.vid_player = TkinterVideo(ref_frame, scaled=True)
         self.vid_player.grid(row=0, column=0, sticky="nsew")
-        self.vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{self.word}.mp4")
+        local_video_path = f"../assets/videos/{self.word}.mp4"
+        if os.path.exists(local_video_path):
+            # Nếu có video trong thư mục local
+            self.vid_player.load(local_video_path)
+        else:
+            # Nếu không có, gọi API để lấy video
+            try:
+                response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={self.word}")
+                data = response.json()
+                
+                if data['success'] and data['videos']:
+                    video_url = data['videos'][0]['video']
+                    self.vid_player.load(video_url)
+                else:
+                    # Xử lý trường hợp không tìm thấy video
+                    messagebox.showerror("Error", f"No video found for word: {self.word}")
+            except requests.RequestException as e:
+                messagebox.showerror("API Error", f"Failed to fetch video: {str(e)}")
+        
         self.vid_player.play()
         
         # Frame camera practice
@@ -636,28 +934,7 @@ def create_word_button_with_practice(parent, word, command):
     
     return frame
 
-# Cập nhật hàm update_word_list để sử dụng button mới
-def update_word_list(category):
-    for button in word_buttons:
-        button.pack_forget()
-    
-    if category == "alphabet":
-        words_to_display = ["a", "b", "c", "d", "o","u","v","y"]
-    elif category == "verbs":
-        words_to_display = ["eat", "drink", "go", "have", "read", "write", "love", "open", 
-                           "play", "learn", "please","thank you", "use"]
-    elif category == "nouns":
-        words_to_display = ["book", "water", "phone", "house", "school", "money", "me"]
 
-    for word in words_to_display:
-        button_frame = create_word_button_with_practice(
-            sub_frame,
-            word,
-            lambda w=word: play_vocab_video(w)
-        )
-        word_buttons.append(button_frame)
-
-# Video control buttons in Video Frame
 record_btn = HoverButton(
     top_frame,
     text="Record Video",
@@ -703,16 +980,38 @@ back_to_home_btn = HoverButton(
 )
 back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
 
+
 # Vocabulary Frame
 vocab_frame = tk.Frame(main_frame, bg="#f5f5f5")
-vocab_frame.place(relwidth=1, relheight=1)
 
-# Vocabulary Learning Section (under "Learn Sign Language")
 vocab_title = tk.Label(vocab_frame, text="Learn Sign Language - Vocabulary", font=("Arial", 24, "bold"), bg="#f5f5f5", fg="#333")
 vocab_title.pack(pady=20)
 
+# Categories
 category_frame = tk.Frame(vocab_frame, bg="#f0f0f0")
 category_frame.pack(fill="x", pady=10)
+
+word_buttons = []
+
+def update_word_list(category):
+    for button in word_buttons:
+        button.pack_forget()
+    
+    if category == "alphabet":
+        words_to_display = ["a", "b", "c", "d", "o","u","v","y"]
+    elif category == "verbs":
+        words_to_display = ["eat", "drink", "go", "have", "read", "write", "love", "open", 
+                           "play", "learn", "please","thank you", "use"]
+    elif category == "nouns":
+        words_to_display = ["book", "water", "phone", "house", "school", "money", "me"]
+
+    for word in words_to_display:
+        button_frame = create_word_button_with_practice(
+            sub_frame,
+            word,
+            lambda w=word: play_vocab_video(w)
+        )
+        word_buttons.append(button_frame)
 
 alphabet_btn = HoverButton(
     category_frame,
@@ -759,15 +1058,15 @@ nouns_btn = HoverButton(
 )
 nouns_btn.pack(side=tk.LEFT, padx=10)
 
+# Search functionality
 search_frame = tk.Frame(vocab_frame, bg="#f0f0f0")
-search_frame.pack(side=tk.TOP, fill="x")
+search_frame.pack(fill="x", pady=10)
 
-search_label = tk.Label(search_frame, text="Search word:", font=("Arial", 14, "bold"), bg="#f0f0f0", fg="#333")
-
+search_label = tk.Label(search_frame, text="Search word:", font=("Arial", 14), bg="#f0f0f0")
 search_label.pack(side=tk.LEFT, padx=10)
 
 search_var = tk.StringVar()
-search_entry = ttk.Entry(search_frame, textvariable=search_var, font=("Arial", 14))
+search_entry = tk.Entry(search_frame, textvariable=search_var, font=("Arial", 14))
 search_entry.pack(side=tk.LEFT, padx=10, fill="x", expand=True)
 
 def search_word():
@@ -793,34 +1092,51 @@ search_btn = HoverButton(
 )
 search_btn.pack(side=tk.LEFT, padx=10)
 
+# Word list frame
 sub_frame = tk.Frame(vocab_frame, bg="#f0f0f0", width=150)
 sub_frame.pack(side=tk.LEFT, fill="y")
 
-words = ["goodbye", "thanks", "sorry", "a", "b", "c", "d", "eat", "drink", "hello", "go", "have", "read", "write", "love", "open", "play", "take",
-         "learn", "please", "thanks", "use", "book", "water", "phone", "house", "school", "money", "car", "bed", "table", "chair", "friend", 
-         "family", "you", "english", "apple", "baby", "camera", "me", "game", "hat"]
-word_buttons = []
+words = ["a", "b", "c", "d", "o","u","v","y"] + \
+        ["eat", "drink", "go", "have", "read", "write", "love", "open", 
+                           "play", "learn", "please","thank you", "use"] + \
+        ["book", "water", "phone", "house", "school", "money", "me"]
 
 def play_vocab_video(word):
-    video_path = f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{word}.mp4"
-    # Kiểm tra xem tệp video có tồn tại không
-    if os.path.exists(video_path):
-        vid_player_vocab.load(video_path)
-        vid_player_vocab.play()
-    else:
-        # Nếu không tìm thấy tệp video, hiển thị thông báo lỗi
-        text_box.delete("1.0", "end")
-        text_box.insert("1.0", f"Video for '{word}' not found.")
+    try:
+        video_path = f"../assets/videos/{word}.mp4"  # Sửa đuôi file
+        vid_player_vocab.stop()
+        if os.path.exists(video_path):
+            vid_player_vocab.load(video_path)
+            vid_player_vocab.play()
+        else:
+            try:
+                response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={word}")
+                data = response.json()
+                
+                if data['success'] and data['videos']:
+                    video_url = data['videos'][0]['video']
+                    vid_player_vocab.load(video_url)
+                    vid_player_vocab.play()
+                else:
+                    print(f"No video found for word: {word}")
+            except requests.RequestException as e:
+                print(f"Failed to fetch video: {str(e)}")
+    except Exception as e:
+        print(f"Error playing video: {str(e)}")
+        # Không để chương trình crash
+
 button_width = 12
 for word in words:
     btn = HoverButton(
         sub_frame,
         text=word,
-        font=("Arial", 14, "bold"),
-        bg="#ff7675",
+        font=("Arial", 12, "bold"),
+        bg="#4CAF50",
         fg="#fff",
         relief="flat",
         command=lambda w=word: play_vocab_video(w),
+        padx=10,
+        pady=5,
         width=button_width,
         cursor="hand2"
     )
@@ -830,35 +1146,20 @@ for word in words:
 vid_player_vocab = TkinterVideo(vocab_frame, scaled=True)
 vid_player_vocab.pack(expand=True, fill="both", padx=10, pady=10)
 
-# tro ve
-back_to_home_btn = HoverButton(
-    vocab_frame,
-    text="Back to Home",
-    font=("Helvetica", 12, "bold"),  # Giảm kích thước font
-    bg="#FFFFFF",
-    fg="#333",
-    relief="flat",
-    command=show_home_frame,
-    padx=8,  # Giảm padding
-    pady=4,  # Giảm padding
-    width=12,  # Giảm chiều rộng
-    cursor="hand2"
-)
-back_to_home_btn.pack(side=tk.BOTTOM, pady=8)  # Giảm khoảng cách padding
+back_to_home_btn = tk.Button(vocab_frame, text="Back to Home", bg="#FFFFFF", font=("Arial", 12, "bold"), fg="#333", command=show_home_frame)
+back_to_home_btn.pack(side=tk.BOTTOM, pady=10)
 
-# Quiz Frame (for the Vocabulary Quiz section)
+# Quiz Frame
 quiz_frame = tk.Frame(main_frame, bg="#f5f5f5")
-quiz_frame.place(relwidth=1, relheight=1)
 
-quiz_title_label = tk.Label(quiz_frame, text="Vocabulary Quiz", font=("Arial", 20, "bold"), bg="#f5f5f5", fg="#333")
-quiz_title_label.pack(pady=5)
+quiz_title_label = tk.Label(quiz_frame, text="Vocabulary Quiz", font=("Arial", 24, "bold"), bg="#f5f5f5", fg="#333")
+quiz_title_label.pack(pady=20)
 
-quiz_instruction_label = tk.Label(quiz_frame, text="Select the correct word for the video shown:", font=("Arial", 14), bg="#f5f5f5", fg="#333")
-quiz_instruction_label.pack(pady=7)
+quiz_instruction_label = tk.Label(quiz_frame, text="Select the correct word for the video shown:", font=("Arial", 16), bg="#f5f5f5", fg="#333")
+quiz_instruction_label.pack(pady=10)
 
 quiz_vid_player = TkinterVideo(quiz_frame, scaled=True)
 quiz_vid_player.pack(expand=True, fill="both", padx=10, pady=10)
-
 
 random_word = "goodbye"
 random_word_incorrect = "hello"
@@ -893,7 +1194,25 @@ def quiz_random_word():
     start_quiz(random_word)
 
 def start_quiz(random_word):
-    quiz_vid_player.load(f"/home/dovanducanh9/Desktop/PBL4/pythontkinter/assets/videos/{random_word}.mp4")
+    video_path = f"../assets/videos/{random_word}.mp4s"
+    
+    if os.path.exists(video_path):
+        quiz_vid_player.load(video_path)
+    else:
+        try:
+            response = requests.get(f"http://localhost:8081/learn-signature/get-video-by-prompt?prompt={random_word}")
+            data = response.json()
+            
+            if data['success'] and data['videos']:
+                video_url = data['videos'][0]['video']
+                quiz_vid_player.load(video_url)
+            else:
+                print(f"No video found for word: {random_word}")
+                return
+        except requests.RequestException as e:
+            print(f"Failed to fetch video: {str(e)}")
+            return
+    
     quiz_vid_player.play()
 
 # Sử dụng lambda để không gọi hàm ngay lập tức
@@ -976,8 +1295,8 @@ back_to_home_btn = HoverButton(
     cursor="hand2"
 )
 back_to_home_btn.pack(side=tk.BOTTOM, pady=7)
-# Start with home_frame raised
-home_frame.tkraise()
 
+# Start with login_frame raised
+login_frame.tkraise()
 # Run the Tkinter main loop
 root.mainloop()
