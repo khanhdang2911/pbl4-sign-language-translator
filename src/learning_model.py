@@ -3,7 +3,7 @@ import os
 import numpy as np
 import mediapipe as mp
 class HandGestureCorrection:
-    def __init__(self, keypoints_path='Data/colectedkeypoints'):
+    def __init__(self, keypoints_path='/home/dovanducanh9/Desktop/PBL4/pythontkinter/src/Data/colectedkeypoints'):
         self.keypoints_path = keypoints_path
         self.mp_holistic = mp.solutions.holistic
         self.holistic = self.mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)

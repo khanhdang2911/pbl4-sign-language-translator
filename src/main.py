@@ -484,8 +484,8 @@ refresh_btn = tk.Button(
 refresh_btn.pack(pady=10)
 
 recording = False
-API_URL = "http://127.0.0.1:3000/predict/"
-frame_rate = 30  # 30 FPS
+API_URL = "http://192.168.2.101/predict"
+frame_rate = 30  # 30 FPS "http://192.168.2.101/predict"
 
 def update_video_frame():
     global recording, cap, text_box, resultPredict
