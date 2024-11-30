@@ -665,9 +665,9 @@ def stop_recording():
             # Chuẩn bị data để gửi lên API Ollama
             api_data = {
                 "model": "llama2", 
-                "prompt": f"You are a sign language recognition model. Convert the input (keywords, signs, or phrases) into a complete, grammatically correct sentence. Return only the sentence in JSON format. format: {{\"results\": \"\"}} input : {{{', '.join(f'\"{word}\"' for word in predicted_words)}}}", 
-                "format": "json", 
-                "stream": False
+                "prompt": " ".join(predicted_words),
+                "stream": False,
+                "format": "json"
             }
             
             # Gọi API Ollama
@@ -679,6 +679,7 @@ def stop_recording():
                 
                 # Parse kết quả từ trường response
                 try:
+                    # Kiểm tra và parse response JSON
                     parsed_result = json.loads(api_response['response'])
                     corrected_sentence = parsed_result.get('results', 'No sentence generated')
                     
@@ -696,9 +697,9 @@ def stop_recording():
                     engine.say(corrected_sentence)
                     engine.runAndWait()
                     
-                except (json.JSONDecodeError, KeyError):
+                except (json.JSONDecodeError, KeyError) as e:
                     text_box.delete("1.0", "end")
-                    text_box.insert("1.0", "Error parsing API response.")
+                    text_box.insert("1.0", f"Error parsing API response: {str(e)}")
                     
             else:
                 text_box.delete("1.0", "end")
