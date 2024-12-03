@@ -847,7 +847,7 @@ class PracticeWindow:
                             user_keypoints = self.hand_gesture_correction.extract_keypoints_normalized(results)
                             
                             # Tải keypoints tham chiếu
-                            reference_keypoints = self.hand_gesture_correction.load_reference_keypoints(self.word)
+                            reference_keypoints = self.hand_gesture_correction.load_reference_keypoints(self.word.upper())
                             
                             if reference_keypoints is not None:
                                 # Đánh giá độ tương đồng
@@ -858,15 +858,15 @@ class PracticeWindow:
                                 
                                 print(f"Score: {score}")
                                 
-                                if errors:
-                                    # Có lỗi trong cử chỉ tay
+                                if score <= 0.9 and errors:
+                                    # Có lỗi trong cử chỉ tay hoặc score không đạt
                                     print("Errors detected:", errors)
                                     self.result_label.config(
-                                        text="Incorrect hand gesture. Try again!",
+                                        text=f"Incorrect hand gesture. Accuracy: {score*100:.2f}%",
                                         foreground="red"
                                     )
                                 else:
-                                    # Cử chỉ tay chính xác
+                                    # Cử chỉ tay chính xác (score > 0.9)
                                     print("Correct hand gesture!")
                                     self.result_label.config(
                                         text=f"Good job! Accuracy: {score*100:.2f}%",
@@ -886,8 +886,8 @@ class PracticeWindow:
                     except Exception as e:
                         print(f"Evaluation error: {e}")
                 
-            self.video_label.after(10, self.update_practice_frame)
-# Thêm function để tạo nút Practice trong word buttons
+            self.video_label.after(10, self.update_practice_frame)# Thêm function để tạo nút Practice trong word buttons
+    # Thêm function để tạo nút Practice trong word buttons
 def create_word_button_with_practice(parent, word, command):
     frame = ttk.Frame(parent)
     frame.pack(pady=5, anchor='w')
