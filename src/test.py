@@ -24,7 +24,7 @@ def stop_recording():
             # Chuẩn bị data để gửi lên API Ollama
             api_data = {
                 "model": "llama2",
-                "prompt": f"You are a sign language recognition model. Convert input data into a complete sentence. For example, if I give you the sentence I am k h a n h, you must combine it into I am Khanh. Input: {' '.join(predicted_words)}",
+                "prompt": f"You are a sign language recognition model. Your task is to convert the input sequence of words and characters into a complete, grammatically correct sentence. Here is an example:Input: I am k h a n h response: I am Khanh. Strictly return only the output sentence as plain text, with no additional explanation, metadata, or formatting. Input: {' '.join(predicted_words)}",
                 "stream": False
             }
 
@@ -36,7 +36,10 @@ def stop_recording():
                 api_response = response.json()
                 
                 # Hiển thị kết quả từ trường "response"
-                corrected_sentence = api_response.get('response', 'No sentence generated')
+                corrected_sentence = api_response.get('response', 'No sentence generated').strip()
+                
+                # Xử lý chuỗi để loại bỏ ký tự không mong muốn
+                corrected_sentence = corrected_sentence.replace('\n', '').strip()
                 
                 # Hiển thị kết quả dự đoán và câu đã sửa
                 text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
@@ -71,3 +74,10 @@ def stop_recording():
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
     
     back_to_home_btn.config(state=tk.NORMAL)  # This enables the button again after recording
+
+
+{
+    "model": "llama2",
+    "prompt": "You are a sign language recognition model. Your task is to convert the input sequence of words and characters into a complete, grammatically correct sentence. Here is an example:Input: I am k h a n h response: I am Khanh. Strictly return only the output sentence as plain text, with no additional explanation, metadata, or formatting. Input: I am k h a n h",
+    "stream": false
+}
