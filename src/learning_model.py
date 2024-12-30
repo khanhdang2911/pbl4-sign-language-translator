@@ -2,6 +2,9 @@ import cv2
 import os
 import numpy as np
 import mediapipe as mp
+
+eps = 1e-6
+
 class HandGestureCorrection:
     def __init__(self, keypoints_path='Data/colectedkeypoints'):
         self.keypoints_path = keypoints_path
@@ -52,12 +55,13 @@ class HandGestureCorrection:
             for finger, indices in fingers_indices.items():
                 user_finger_shape = np.linalg.norm(user_hand[indices] - user_hand[0], axis=1)
                 ref_finger_shape = np.linalg.norm(ref_hand[indices] - ref_hand[0], axis=1)
-                shape_difference = np.linalg.norm(user_finger_shape - ref_finger_shape)
+                shape_difference = np.linalg.norm(user_finger_shape - ref_finger_shape) / max(np.linalg.norm(ref_finger_shape), eps)
                 if shape_difference > threshold:
                     errors.append(f"{hand} {finger} Shape Error: {shape_difference:.2f}")
                     shape_differences.append(shape_difference)
 
-        score = 1 - np.mean(shape_differences) if shape_differences else 1
+        weights = [np.linalg.norm(ref_hand[indices] - ref_hand[0]) for finger, indices in fingers_indices.items()]
+        score = 1 - np.average(shape_differences, weights=weights) if shape_differences else 1
         return score, errors
 
     def load_reference_keypoints(self, label):
