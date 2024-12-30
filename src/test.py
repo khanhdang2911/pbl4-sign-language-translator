@@ -9,39 +9,37 @@ def stop_recording():
     if resultPredict:
         filtered_results = []
         last_word = None
-        predicted_words = []  # Mảng chứa các từ để gửi lên API
+        predicted_words = []
         
-        # Lọc các kết quả, chỉ giữ lại khi có sự thay đổi từ
         for result in resultPredict:
             current_word = result['word']
             if last_word is None or current_word != last_word:
                 filtered_results.append(result)
-                predicted_words.append(current_word)  # Thêm từ vào mảng để gửi lên API
+                predicted_words.append(current_word)
                 last_word = current_word
         
-        # Gọi API Ollama để sửa ngữ nghĩa
         try:
-            # Chuẩn bị data để gửi lên API Ollama
             api_data = {
                 "model": "llama2",
                 "prompt": f"You are a sign language recognition model. Your task is to convert the input sequence of words and characters into a complete, grammatically correct sentence. Here is an example:Input: I am k h a n h response: I am Khanh. Strictly return only the output sentence as plain text, with no additional explanation, metadata, or formatting. Input: {' '.join(predicted_words)}",
                 "stream": False
             }
 
-            # Gọi API Ollama
             response = requests.post('http://localhost:5000/api/generate', json=api_data)
             
             if response.status_code == 200:
-                # Parse JSON response
                 api_response = response.json()
-                
-                # Hiển thị kết quả từ trường "response"
                 corrected_sentence = api_response.get('response', 'No sentence generated').strip()
-                
-                # Xử lý chuỗi để loại bỏ ký tự không mong muốn
                 corrected_sentence = corrected_sentence.replace('\n', '').strip()
                 
-                # Hiển thị kết quả dự đoán và câu đã sửa
+                # Call text-to-voice API
+                voice_data = {
+                    "text_voice": corrected_sentence,
+                    "userId": user_id
+                }
+                voice_response = requests.post('http://localhost:8081/home/create-text-voice-without-corrector', 
+                                            json=voice_data)
+                
                 text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
                 for result in filtered_results:
                     text_output += f"Word: {result['word']}, Confidence: {result['confidence']*100:.2f}%\n"
@@ -51,7 +49,6 @@ def stop_recording():
                 text_box.delete("1.0", "end")
                 text_box.insert("1.0", text_output)
                 
-                # Phát âm kết quả
                 engine.say(corrected_sentence)
                 engine.runAndWait()
                 
@@ -60,7 +57,6 @@ def stop_recording():
                 text_box.insert("1.0", f"API error: {response.status_code}")
                 
         except requests.exceptions.RequestException as e:
-            # Xử lý lỗi khi gọi API
             text_output = "Recording stopped.\nPredicted words with high confidence:\n\n"
             for result in filtered_results:
                 text_output += f"Word: {result['word']}, Confidence: {result['confidence']*100:.2f}%\n"
@@ -73,8 +69,7 @@ def stop_recording():
         text_box.delete("1.0", "end")
         text_box.insert("1.0", "Recording stopped. No reliable predictions were made.")
     
-    back_to_home_btn.config(state=tk.NORMAL)  # This enables the button again after recording
-
+    back_to_home_btn.config(state=tk.NORMAL)
 
 {
     "model": "llama2",
