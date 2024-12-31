@@ -518,12 +518,16 @@ def update_video_frame():
     if recording:
         ret, frame = cap.read()
         if ret:
+            # Resize frame để hiển thị nhỏ hơn
+            target_width, target_height = 640, 360  # Kích thước khung hiển thị
+            frame_resized = cv2.resize(frame, (target_width, target_height))
+            
             # Hiển thị frame
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame_rgb)
             imgtk = ImageTk.PhotoImage(image=img)
             video_label.imgtk = imgtk
-            video_label.configure(image=imgtk)
+            video_label.configure(image=imgtk, width=target_width, height=target_height)
             
             current_time = time.time()
             
@@ -546,7 +550,7 @@ def update_video_frame():
                     
                     # Hiển thị kết quả trực tiếp trên frame
                     text = f"Prediction: {prediction}, Confidence: {confidence:.2f}"
-                    frame_with_text = frame.copy()
+                    frame_with_text = frame_resized.copy()
                     cv2.putText(frame_with_text, text, (10, 30), 
                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
                     
@@ -555,7 +559,7 @@ def update_video_frame():
                     img = Image.fromarray(frame_rgb)
                     imgtk = ImageTk.PhotoImage(image=img)
                     video_label.imgtk = imgtk
-                    video_label.configure(image=imgtk)
+                    video_label.configure(image=imgtk, width=target_width, height=target_height)
                     
                 else:
                     print(f"API error: Status code {response.status_code}, {response.text}")
@@ -607,6 +611,7 @@ def update_video_frame():
             
             # Delay 30ms (tương đương với frame rate 30 FPS)
             video_label.after(30, update_video_frame)
+
 
 def record_video():
     global cap, recording, last_update_time, last_hand_positions, last_prediction_time, predictions_array, resultPredict, last_hand_count
