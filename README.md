@@ -26,33 +26,13 @@ The Sign Language Translation System is an AI-powered application that converts 
    - Offers multiple-choice answers to test users' recognition skills.
    - Provides instant feedback on correct and incorrect answers.
 
-## 🖥️ API Overview
-### 1. **Video Upload to Cloudinary**
-- Uploads videos to Cloudinary for processing and storage.
-- Stores the returned video URL in the database for future access.
-
-### 2. **Fetch Sign Resource from Cloudinary**
-- Retrieves image/video links from Cloudinary based on the requested sign.
-- Displays these resources for users during lessons and practice sessions.
-
-### 3. **Get User Translation History**
-- Fetches the sign language translation history for a specific user.
-- Provides details on the words/signs translated and the corresponding time.
-
-### 4. **Correct Translated Text**
-- Sends recognized words to Gemini or Ollama APIs for correction.
-- Returns corrected sentences for users.
-
-### 5. **Login API**
-- Authenticates users via username and password.
-- Returns user information upon successful login.
 
 ## ⚙️ Technology Stack
-- **Frontend:** React (or relevant framework)
+- **Frontend:** Python Tkinter for UI
 - **Backend:** Node.js, Express.js
 - **Database:** MongoDB
 - **Cloud Storage:** Cloudinary
-- **AI Models:** TensorFlow, Gemini API, Ollama API
+- **AI Models** 
 
 ## 📚 How It Works
 ### 1. Translation Process
@@ -75,25 +55,8 @@ The Sign Language Translation System is an AI-powered application that converts 
 - **Interactive Learning:** Engages users through lessons, practice, and quizzes.
 - **Real-Time Translation:** Converts sign language gestures into text instantly.
 
-## 📦 Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/sign-language-system.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd sign-language-system
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the server:
-   ```bash
-   npm start
-   ```
 
-## 🛠️ APIs Used
+## 🛠️ APIs Used (Supplementary)
 - **Cloudinary** - For media storage and retrieval.
 - **Gemini API** - For text correction.
 - **Ollama API** - For advanced AI text processing.
