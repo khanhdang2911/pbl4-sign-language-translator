@@ -30,7 +30,7 @@ The Sign Language Translation System is an AI-powered application that converts 
 ## ⚙️ Technology Stack
 - **Frontend:** Python Tkinter for UI
 - **Backend:** Node.js, Express.js
-- **Database:** MongoDB
+- **Database:** MySQL
 - **Cloud Storage:** Cloudinary
 - **AI Models** 
 
